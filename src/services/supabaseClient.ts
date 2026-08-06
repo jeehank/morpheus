@@ -3,7 +3,7 @@ import type { UserAccount, Review, ReviewReport } from '../types';
 import { containsProfanity } from './profanityFilter';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nlvunhotvqawgpemkjvf.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdnVuaG90dnFawgpemkjvfIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTA5ODQsImV4cCI6MjEwMTUyNjk4NH0.RtVR7Ok3rKlG188lfZ_YFO7kn_CIwdRKko6kLnP64jc';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdnVuaG90dnFhd2dwZW1ranZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTA5ODQsImV4cCI6MjEwMTUyNjk4NH0.RtVR7Ok3rKlG188lfZ_YFO7kn_CIwdRKko6kLnP64jc';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -205,8 +205,47 @@ export async function loginUser(
       password
     });
 
+    // If email not confirmed, still let user in — they verify later in Account Center
     if (authError) {
-      return { success: false, error: authError.message || 'Invalid email or password.' };
+      const errMsg = authError.message || '';
+      const isUnconfirmed = errMsg.toLowerCase().includes('email not confirmed') || errMsg.toLowerCase().includes('not confirmed');
+
+      if (!isUnconfirmed) {
+        return { success: false, error: errMsg || 'Invalid email or password.' };
+      }
+
+      // Email not confirmed — look up profile from DB and let them in as unverified
+      const { data: profileMatch } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', emailToUse)
+        .single();
+
+      if (!profileMatch) {
+        return { success: false, error: 'Account not found. Please register first.' };
+      }
+
+      if (profileMatch.is_banned) {
+        return { success: false, error: 'Your account has been banned by an administrator.' };
+      }
+
+      const unverifiedUser: UserAccount = {
+        id: profileMatch.id,
+        email: profileMatch.email,
+        name: profileMatch.username || emailToUse.split('@')[0],
+        role: profileMatch.role || 'user',
+        isBanned: false,
+        isEmailVerified: false,
+        isGoogleAuth: false,
+        ipAddress: currentIp,
+        createdAt: profileMatch.created_at || new Date().toISOString(),
+        watchlist: [],
+        playlists: [],
+        continueWatching: []
+      };
+
+      setCurrentUser(unverifiedUser);
+      return { success: true, user: unverifiedUser };
     }
 
     const userId = authData.user.id;
