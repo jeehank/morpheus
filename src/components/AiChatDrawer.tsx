@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Sparkles, Plus, Check, Bot, User as UserIcon } from 'lucide-react';
+import { X, Send, Plus, Check, Bot, User as UserIcon } from 'lucide-react';
 import type { ChatMessage, UserAccount } from '../types';
-import { sendChatMessage } from '../services/ollamaService';
+import { sendGeminiChatMessage } from '../services/geminiService';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface AiChatDrawerProps {
@@ -27,7 +27,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       const initialGreeting: ChatMessage = {
         id: 'msg_welcome',
         sender: 'ai',
-        text: "👋 Hey there! I'm your **IGMDB Concierge** powered by Ollama. Let's find your next favorite movie or video game!\n\nTell me what you're in the mood for, or what was the last movie/game that blew your mind?",
+        text: "Welcome to IGMDB AI Assistant powered by Google Gemini. Let me help you find your next favorite movie or video game. What genre or mood are you looking for today?",
         timestamp: new Date().toISOString()
       };
       setMessages([initialGreeting]);
@@ -57,7 +57,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
     setIsSending(true);
 
     try {
-      const responseMsg = await sendChatMessage(newHistory, query);
+      const responseMsg = await sendGeminiChatMessage(newHistory, query);
       setMessages(prev => [...prev, responseMsg]);
     } catch (err) {
       setMessages(prev => [
@@ -65,7 +65,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
         {
           id: 'err_' + Date.now(),
           sender: 'ai',
-          text: "I'm having trouble analyzing right now. Try selecting one of the suggested movie vibes below!",
+          text: "I am having trouble connecting to Gemini API right now. Please select one of the suggested prompts below.",
           timestamp: new Date().toISOString()
         }
       ]);
@@ -105,7 +105,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       animation: 'fadeIn 0.2s ease-out'
     }}>
       
-      {/* Header */}
+      {/* Header - Emojis & Sparkle removed */}
       <div style={{
         background: 'linear-gradient(135deg, #181818, #2a2a2a)',
         padding: '14px 16px',
@@ -123,16 +123,18 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
             color: '#000',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            fontWeight: 800,
+            fontSize: '0.85rem'
           }}>
-            <Sparkles size={18} />
+            AI
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              IGMDB AI Concierge
-              <span style={{ fontSize: '0.65rem', backgroundColor: '#333', color: 'var(--brand-orange)', padding: '1px 5px', borderRadius: '4px' }}>Ollama</span>
+              IGMDB AI Assistant
+              <span style={{ fontSize: '0.65rem', backgroundColor: '#333', color: 'var(--brand-orange)', padding: '1px 5px', borderRadius: '4px' }}>Gemini 1.5</span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#aaa' }}>Natural Taste & Daily Recommendation</div>
+            <div style={{ fontSize: '0.75rem', color: '#aaa' }}>Powered by Google Gemini REST API</div>
           </div>
         </div>
 
@@ -252,8 +254,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
 
         {isSending && (
           <div style={{ display: 'flex', gap: '8px', color: '#aaa', fontSize: '0.8rem', alignItems: 'center' }}>
-            <Sparkles size={14} className="animate-spin" />
-            <span>AI Concierge is typing...</span>
+            <span>AI Assistant is generating response...</span>
           </div>
         )}
 
@@ -287,7 +288,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       <div style={{ padding: '12px', backgroundColor: '#1f1f1f', borderTop: '1px solid #333', display: 'flex', gap: '8px' }}>
         <input
           type="text"
-          placeholder="Tell AI your movie/game mood..."
+          placeholder="Ask Gemini AI for movie or game suggestions..."
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
