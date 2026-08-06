@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Globe, AlertTriangle } from 'lucide-react';
+import { X, Mail, Lock, User, Globe, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { getClientIp, registerUser, loginUser } from '../services/supabaseClient';
+import { TurnstileCaptcha } from './TurnstileCaptcha';
 import type { UserAccount } from '../types';
 
 interface AuthModalProps {
@@ -21,18 +22,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [clientIp, setClientIp] = useState<string>('Detecting IP...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       getClientIp().then(ip => setClientIp(ip));
       setErrorMsg(null);
+      setCaptchaToken(null);
     }
   }, [isOpen]);
+
+  // Reset captcha when switching modes
+  useEffect(() => {
+    setCaptchaToken(null);
+  }, [mode]);
 
   if (!isOpen) return null;
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!captchaToken) {
+      setErrorMsg('Please complete the security verification (CAPTCHA) before proceeding.');
+      return;
+    }
+
     if (!emailOrUsername.trim() || !password.trim()) {
       setErrorMsg('Please enter both email and password.');
       return;
@@ -46,6 +60,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (!res.success) {
       setErrorMsg(res.error || 'Failed to register account.');
+      setCaptchaToken(null);
       return;
     }
 
@@ -57,6 +72,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!captchaToken) {
+      setErrorMsg('Please complete the security verification (CAPTCHA) before proceeding.');
+      return;
+    }
+
     if (!emailOrUsername.trim() || !password.trim()) {
       setErrorMsg('Please enter both email/username and password.');
       return;
@@ -70,6 +91,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (!res.success) {
       setErrorMsg(res.error || 'Invalid credentials or banned account.');
+      setCaptchaToken(null);
       return;
     }
 
@@ -77,6 +99,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onSuccess(res.user);
       onClose();
     }
+  };
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token);
+    setErrorMsg(null);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
   };
 
   return (
@@ -97,8 +128,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         borderRadius: '12px',
         width: '100%',
         maxWidth: '440px',
+        maxHeight: 'calc(100vh - 32px)',
+        overflowY: 'auto',
         boxShadow: '0 12px 40px rgba(0,0,0,0.9)',
-        overflow: 'hidden',
         animation: 'fadeIn 0.2s ease-out'
       }}>
         
@@ -164,6 +196,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {/* CAPTCHA Verified Banner */}
+          {captchaToken && (
+            <div style={{
+              backgroundColor: 'rgba(34, 197, 94, 0.12)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              color: '#4ade80',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              fontSize: '0.78rem',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <ShieldCheck size={16} />
+              <span>Security verification passed</span>
+            </div>
+          )}
+
           {mode === 'signin' ? (
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
@@ -218,28 +269,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
+              {/* Cloudflare Turnstile CAPTCHA */}
+              <div style={{
+                backgroundColor: '#161616',
+                border: '1px solid #2e2e2e',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: '#888', fontWeight: 600 }}>Complete security check to continue</span>
+                <TurnstileCaptcha
+                  onVerify={handleCaptchaVerify}
+                  onExpire={handleCaptchaExpire}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
                 style={{
                   width: '100%',
-                  backgroundColor: 'var(--brand-orange)',
-                  color: '#000',
+                  backgroundColor: captchaToken ? 'var(--brand-orange)' : '#555',
+                  color: captchaToken ? '#000' : '#999',
                   fontWeight: 800,
                   fontSize: '0.95rem',
                   padding: '10px',
                   borderRadius: '6px',
-                  marginTop: '4px'
+                  marginTop: '4px',
+                  cursor: captchaToken ? 'pointer' : 'not-allowed',
+                  transition: 'background 0.2s'
                 }}
               >
-                {isLoading ? 'Signing In...' : 'Sign In'}
+                {isLoading ? 'Signing In...' : captchaToken ? 'Sign In' : 'Complete CAPTCHA to Sign In'}
               </button>
 
               <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#aaa', marginTop: '12px' }}>
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('register')}
+                  onClick={() => { setMode('register'); setErrorMsg(null); }}
                   style={{ color: 'var(--brand-orange)', fontWeight: 700, textDecoration: 'underline' }}
                 >
                   Create one now
@@ -326,28 +397,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
+              {/* Cloudflare Turnstile CAPTCHA */}
+              <div style={{
+                backgroundColor: '#161616',
+                border: '1px solid #2e2e2e',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: '#888', fontWeight: 600 }}>Complete security check to continue</span>
+                <TurnstileCaptcha
+                  onVerify={handleCaptchaVerify}
+                  onExpire={handleCaptchaExpire}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
                 style={{
                   width: '100%',
-                  backgroundColor: 'var(--brand-orange)',
-                  color: '#000',
+                  backgroundColor: captchaToken ? 'var(--brand-orange)' : '#555',
+                  color: captchaToken ? '#000' : '#999',
                   fontWeight: 800,
                   fontSize: '0.95rem',
                   padding: '10px',
                   borderRadius: '6px',
-                  marginTop: '6px'
+                  marginTop: '6px',
+                  cursor: captchaToken ? 'pointer' : 'not-allowed',
+                  transition: 'background 0.2s'
                 }}
               >
-                {isLoading ? 'Registering Account...' : 'Register & Create Account'}
+                {isLoading ? 'Registering Account...' : captchaToken ? 'Register & Create Account' : 'Complete CAPTCHA to Register'}
               </button>
 
               <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#aaa', marginTop: '8px' }}>
                 Already registered?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('signin')}
+                  onClick={() => { setMode('signin'); setErrorMsg(null); }}
                   style={{ color: 'var(--brand-orange)', fontWeight: 700, textDecoration: 'underline' }}
                 >
                   Sign In
