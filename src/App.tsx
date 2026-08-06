@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { MenuDrawer } from './components/MenuDrawer';
 import { AiChatDrawer } from './components/AiChatDrawer';
@@ -13,7 +13,6 @@ import { MediaDetailPage } from './pages/MediaDetailPage';
 import { AccountCenter } from './pages/AccountCenter';
 
 import { fetchMovieVideos } from './services/tmdbApi';
-import { UserAccount } from './types';
 
 export function App() {
   const [activePage, setActivePage] = useState<string>('home');
@@ -219,7 +218,7 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onSuccess={(user: UserAccount) => {
+        onSuccess={() => {
           setIsAuthOpen(false);
         }}
       />

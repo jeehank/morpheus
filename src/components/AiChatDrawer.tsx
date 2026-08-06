@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Sparkles, Plus, Check, Bot, User as UserIcon } from 'lucide-react';
-import { ChatMessage, UserAccount } from '../types';
+import type { ChatMessage, UserAccount } from '../types';
 import { sendChatMessage } from '../services/ollamaService';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
@@ -14,7 +14,6 @@ interface AiChatDrawerProps {
 export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
   isOpen,
   onClose,
-  onNavigate,
   onOpenAuth
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -25,7 +24,6 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      // Initial greeting message
       const initialGreeting: ChatMessage = {
         id: 'msg_welcome',
         sender: 'ai',
