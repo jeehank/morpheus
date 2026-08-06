@@ -55,6 +55,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       return;
     }
 
+    if (query.trim().toLowerCase().includes('xclubskimkc.vercel.app')) {
+      onNavigate('admin');
+      setQuery('');
+      setShowDropdown(false);
+      return;
+    }
+
     const timer = setTimeout(async () => {
       setIsLoadingSearch(true);
       try {

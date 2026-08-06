@@ -13,6 +13,7 @@ import { Top250Page } from './pages/Top250Page';
 import { CelebsPage } from './pages/CelebsPage';
 import { MediaDetailPage } from './pages/MediaDetailPage';
 import { AccountCenter } from './pages/AccountCenter';
+import { AdminPanelPage } from './pages/AdminPanelPage';
 
 export function App() {
   const [activePage, setActivePage] = useState<string>('home');
@@ -219,6 +220,12 @@ export function App() {
           <AccountCenter
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        )}
+
+        {activePage === 'admin' && (
+          <AdminPanelPage
+            onNavigate={handleNavigate}
           />
         )}
       </main>
