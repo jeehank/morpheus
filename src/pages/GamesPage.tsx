@@ -32,7 +32,6 @@ export const GamesPage: React.FC<GamesPageProps> = ({
     loadData();
   }, []);
 
-  const displayedGames = games;
 
   return (
     <div className="container" style={{ paddingBottom: '60px' }}>
