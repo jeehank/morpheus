@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bookmark, ListPlus, Play, CheckCircle2, ShieldAlert, Globe, Trash2, Plus, Film, Gamepad2 } from 'lucide-react';
+import { User, Bookmark, ListPlus, Play, CheckCircle2, ShieldAlert, Globe, Trash2, Plus } from 'lucide-react';
 import { getCurrentUser, updateUserWatchlist, saveStoredAccounts, getStoredAccounts, setCurrentUser } from '../services/supabaseClient';
-import { UserAccount } from '../types';
+import type { UserAccount } from '../types';
 
 interface AccountCenterProps {
   onNavigate: (page: string, params?: any) => void;
