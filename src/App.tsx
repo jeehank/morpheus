@@ -9,6 +9,8 @@ import { MoviesPage } from './pages/MoviesPage';
 import { GamesPage } from './pages/GamesPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { LibraryPage } from './pages/LibraryPage';
+import { Top250Page } from './pages/Top250Page';
+import { CelebsPage } from './pages/CelebsPage';
 import { MediaDetailPage } from './pages/MediaDetailPage';
 import { AccountCenter } from './pages/AccountCenter';
 
@@ -24,6 +26,18 @@ export function App() {
   const handleNavigate = (page: string, params?: any) => {
     setActivePage(page);
     setPageParams(params);
+
+    // Scroll to anchor if specified
+    if (params?.scrollTo) {
+      setTimeout(() => {
+        const el = document.getElementById(`section-${params.scrollTo}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+      }, 200);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -39,7 +53,7 @@ export function App() {
         activePage={activePage}
       />
 
-      {/* Categorized Sub-Navbar matching IMDb */}
+      {/* Categorized Sub-Navbar */}
       <nav style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #292929' }}>
         <div className="container" style={{ display: 'flex', gap: '24px', height: '42px', alignItems: 'center', fontSize: '0.88rem', fontWeight: 700 }}>
           <button
@@ -63,7 +77,19 @@ export function App() {
               padding: '0 4px'
             }}
           >
-            🎬 Movies Tab (IMDb)
+            Movies (IMDb)
+          </button>
+
+          <button
+            onClick={() => handleNavigate('top250')}
+            style={{
+              color: activePage === 'top250' ? 'var(--brand-orange)' : '#ccc',
+              borderBottom: activePage === 'top250' ? '2px solid var(--brand-orange)' : 'none',
+              height: '100%',
+              padding: '0 4px'
+            }}
+          >
+            Top 250 Movies
           </button>
 
           <button
@@ -75,7 +101,7 @@ export function App() {
               padding: '0 4px'
             }}
           >
-            🎮 Games Tab (IGDB)
+            Games (IGDB)
           </button>
 
           <button
@@ -87,7 +113,19 @@ export function App() {
               padding: '0 4px'
             }}
           >
-            📚 Library (80+ Movies & Games)
+            Library (150+ Titles)
+          </button>
+
+          <button
+            onClick={() => handleNavigate('celebs')}
+            style={{
+              color: activePage === 'celebs' ? 'var(--brand-orange)' : '#ccc',
+              borderBottom: activePage === 'celebs' ? '2px solid var(--brand-orange)' : 'none',
+              height: '100%',
+              padding: '0 4px'
+            }}
+          >
+            Celebs & Community
           </button>
 
           <button
@@ -99,7 +137,7 @@ export function App() {
               padding: '0 4px'
             }}
           >
-            📅 2026 Schedule
+            2026 Schedule
           </button>
 
           <button
@@ -112,7 +150,7 @@ export function App() {
               marginLeft: 'auto'
             }}
           >
-            👤 Account Center & Playlists
+            Account Center
           </button>
         </div>
       </nav>
@@ -134,6 +172,13 @@ export function App() {
           />
         )}
 
+        {activePage === 'top250' && (
+          <Top250Page
+            onNavigate={handleNavigate}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        )}
+
         {activePage === 'games' && (
           <GamesPage
             onNavigate={handleNavigate}
@@ -145,6 +190,12 @@ export function App() {
           <LibraryPage
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        )}
+
+        {activePage === 'celebs' && (
+          <CelebsPage
+            onNavigate={handleNavigate}
           />
         )}
 
@@ -172,12 +223,14 @@ export function App() {
         )}
       </main>
 
-      {/* Footer matching IMDb style */}
+      {/* Footer */}
       <footer style={{ backgroundColor: '#0f0f0f', borderTop: '1px solid #262626', padding: '40px 0', marginTop: '60px', textAlign: 'center', fontSize: '0.85rem', color: '#888' }}>
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px', fontWeight: 600, color: '#ccc' }}>
             <span onClick={() => handleNavigate('home')} style={{ cursor: 'pointer' }}>Help</span>
+            <span onClick={() => handleNavigate('top250')} style={{ cursor: 'pointer' }}>Top 250</span>
             <span onClick={() => handleNavigate('library')} style={{ cursor: 'pointer' }}>All Library</span>
+            <span onClick={() => handleNavigate('celebs')} style={{ cursor: 'pointer' }}>Celebs</span>
             <span onClick={() => handleNavigate('schedule')} style={{ cursor: 'pointer' }}>2026 Schedule</span>
             <span onClick={() => handleNavigate('account')} style={{ cursor: 'pointer' }}>IGMDB Account</span>
             <span onClick={() => setIsAiChatOpen(true)} style={{ cursor: 'pointer', color: 'var(--brand-orange)' }}>AI Assistant</span>
@@ -190,7 +243,7 @@ export function App() {
             <span>an IMDb & IGDB company</span>
           </div>
 
-          <p>© 2026 IGMDb.com, Inc. or its affiliates. Dynamic TMDB & IGDB Railway Proxy Data Integration.</p>
+          <p>2026 IGMDb.com, Inc. Dynamic TMDB, IGDB Railway Proxy & Google Gemini AI Integration.</p>
         </div>
       </footer>
 
