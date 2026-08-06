@@ -98,6 +98,7 @@ export interface UserAccount {
   email: string;
   password?: string;
   name: string;
+  photoURL?: string;
   role?: 'admin' | 'moderator' | 'user';
   isBanned?: boolean;
   isEmailVerified: boolean;

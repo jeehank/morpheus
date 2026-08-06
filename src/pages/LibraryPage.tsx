@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Film, Gamepad2, Search, Filter, Loader2, ArrowDown } from 'lucide-react';
-import { fetchTop250MoviesFull } from '../services/tmdbApi';
-import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
+import { fetchTop250MoviesFull, movieMatchesGenre } from '../services/tmdbApi';
+import { fetchGamesFromIGDB, gameMatchesGenre } from '../services/thegamesdbApi';
 import { MediaCard } from '../components/MediaCard';
 import type { Movie, Game } from '../types';
 
@@ -18,20 +18,20 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // Pagination State: Load 150 at once, then "Load More" for next 150
-  const [visibleCount, setVisibleCount] = useState<number>(150);
+  // Pagination State: Continuous Load More
+  const [visibleCount, setVisibleCount] = useState<number>(120);
 
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
   const [allGames, setAllGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function loadFull150Library() {
+    async function loadFullLibrary() {
       setIsLoading(true);
       try {
         const [movies, games] = await Promise.all([
-          fetchTop250MoviesFull(),
-          fetchGamesFromIGDB()
+          fetchTop250MoviesFull(30),
+          fetchGamesFromIGDB(undefined, true)
         ]);
 
         setAllMovies(movies);
@@ -43,7 +43,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       }
     }
 
-    loadFull150Library();
+    loadFullLibrary();
   }, []);
 
   const genresList = [
@@ -56,13 +56,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     const title = 'title' in item ? item.title : item.name;
     const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
     
-    if (selectedGenre === 'All') return matchesSearch;
-
-    const itemGenres = item.genres || [];
-    const matchesGenre = itemGenres.some((g: any) => {
-      const gName = typeof g === 'object' ? g.name : String(g);
-      return gName.toLowerCase().includes(selectedGenre.toLowerCase());
-    });
+    let matchesGenre = true;
+    if (selectedGenre !== 'All') {
+      if (item.media_type === 'movie') {
+        matchesGenre = movieMatchesGenre(item as Movie, selectedGenre);
+      } else {
+        matchesGenre = gameMatchesGenre(item as Game, selectedGenre);
+      }
+    }
 
     return matchesSearch && matchesGenre;
   });
@@ -70,7 +71,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const displayedItems = filteredItems.slice(0, visibleCount);
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 150);
+    setVisibleCount(prev => prev + 120);
   };
 
   return (
@@ -81,10 +82,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '2rem', fontWeight: 900, color: '#fff' }}>
             <span style={{ backgroundColor: 'var(--brand-orange)', color: '#000', padding: '4px 12px', borderRadius: '6px' }}>LIBRARY</span>
-            <span>All Movies & Games Collection (150 at once)</span>
+            <span>All Movies & Games Collection</span>
           </div>
           <p style={{ color: '#aaa', fontSize: '0.9rem', marginTop: '6px' }}>
-            Browse titles 150 at a time with instant genre filtering and "Load More" pagination.
+            Browse feature films and video games with real-time genre filtering and continuous Load More pagination.
           </p>
         </div>
       </div>
@@ -92,7 +93,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       {/* Main Tab Bar: Movies vs Games */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
         <button
-          onClick={() => { setActiveTab('movies'); setSelectedGenre('All'); setVisibleCount(150); }}
+          onClick={() => { setActiveTab('movies'); setSelectedGenre('All'); setVisibleCount(120); }}
           style={{
             flex: 1,
             backgroundColor: activeTab === 'movies' ? 'var(--brand-orange)' : '#1f1f1f',
@@ -113,7 +114,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         </button>
 
         <button
-          onClick={() => { setActiveTab('games'); setSelectedGenre('All'); setVisibleCount(150); }}
+          onClick={() => { setActiveTab('games'); setSelectedGenre('All'); setVisibleCount(120); }}
           style={{
             flex: 1,
             backgroundColor: activeTab === 'games' ? 'var(--brand-orange)' : '#1f1f1f',
@@ -143,7 +144,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             type="text"
             placeholder={`Search ${activeTab === 'movies' ? 'movies' : 'games'} in library...`}
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(150); }}
+            onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(120); }}
             style={{
               width: '100%',
               backgroundColor: '#121212',
@@ -165,7 +166,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           {genresList.map((genre) => (
             <button
               key={genre}
-              onClick={() => { setSelectedGenre(genre); setVisibleCount(150); }}
+              onClick={() => { setSelectedGenre(genre); setVisibleCount(120); }}
               style={{
                 backgroundColor: selectedGenre === genre ? 'var(--brand-orange)' : '#262626',
                 color: selectedGenre === genre ? '#000' : '#ccc',
@@ -188,7 +189,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       {isLoading ? (
         <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <Loader2 size={40} className="animate-spin" />
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Loading {activeTab} titles...</h3>
+          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Loading {activeTab} library...</h3>
         </div>
       ) : displayedItems.length === 0 ? (
         <div style={{ padding: '60px 0', textAlign: 'center', color: '#aaa', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
@@ -204,7 +205,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           }}>
             {displayedItems.map((item) => (
               <MediaCard
-                key={`lib150_${item.media_type}_${item.id}`}
+                key={`lib_${item.media_type}_${item.id}`}
                 item={item}
                 onNavigate={onNavigate}
                 onOpenAuth={onOpenAuth}
@@ -212,7 +213,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             ))}
           </div>
 
-          {/* Load More Button */}
+          {/* Continuous Load More Button */}
           {visibleCount < filteredItems.length && (
             <div style={{ textAlign: 'center', marginTop: '40px' }}>
               <button
@@ -230,7 +231,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 }}
               >
                 <ArrowDown size={20} />
-                <span>Load More ({filteredItems.length - visibleCount} Remaining)</span>
+                <span>Load More</span>
               </button>
             </div>
           )}

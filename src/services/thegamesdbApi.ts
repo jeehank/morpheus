@@ -24,9 +24,20 @@ export function buildGamesQuery(filters?: any, offset = 0): string {
   return clauses.join(";\n") + ";";
 }
 
-export async function fetchGamesFromIGDB(filters?: any): Promise<Game[]> {
+export function gameMatchesGenre(game: Game, genreName: string): boolean {
+  if (!genreName || genreName.toLowerCase() === 'all') return true;
+  const target = genreName.toLowerCase();
+
+  const gameGenres = game.genres || [];
+  return gameGenres.some((g: any) => {
+    const gName = typeof g === 'object' ? g.name : String(g);
+    return gName.toLowerCase().includes(target);
+  });
+}
+
+export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = true): Promise<Game[]> {
   try {
-    const offsets = [0, 60, 120];
+    const offsets = extraPages ? [0, 60, 120, 180, 240, 300, 360, 420] : [0, 60, 120];
     const requests = offsets.map(offset =>
       fetch(`${IGDB_PROXY_BASE}/games`, {
         method: "POST",

@@ -65,18 +65,49 @@ export async function fetchTopRatedMovies(): Promise<Movie[]> {
   }
 }
 
-// Fetches 150+ to 250 Top Rated Movies for the dedicated Top 250 page
-export async function fetchTop250MoviesFull(): Promise<Movie[]> {
+const TMDB_GENRE_MAP: Record<string, number> = {
+  'action': 28,
+  'adventure': 12,
+  'animation': 16,
+  'comedy': 35,
+  'drama': 18,
+  'fantasy': 14,
+  'horror': 27,
+  'sci-fi': 878,
+  'thriller': 53,
+  'rpg': 14
+};
+
+export function movieMatchesGenre(movie: Movie, genreName: string): boolean {
+  if (!genreName || genreName.toLowerCase() === 'all') return true;
+  const target = genreName.toLowerCase();
+  
+  if (movie.genres && Array.isArray(movie.genres)) {
+    if (movie.genres.some((g: any) => (typeof g === 'object' ? g.name : String(g)).toLowerCase().includes(target))) {
+      return true;
+    }
+  }
+
+  const targetId = TMDB_GENRE_MAP[target];
+  if (targetId && movie.genre_ids && Array.isArray(movie.genre_ids)) {
+    if (movie.genre_ids.includes(targetId)) return true;
+  }
+
+  return false;
+}
+
+// Fetches extended pages of top rated feature films for infinite Load More
+export async function fetchTop250MoviesFull(maxPages: number = 25): Promise<Movie[]> {
   try {
-    const pages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+    const pages = Array.from({ length: maxPages }, (_, i) => i + 1);
     const pageRequests = pages.map(p => fetchFromTmdb<{ results: any[] }>('/movie/top_rated', { page: String(p) }));
     const results = await Promise.all(pageRequests);
 
-    const allMovies = results.flatMap(res => res.results.map(item => ({ ...item, media_type: 'movie' as const })));
+    const allMovies = results.flatMap(res => (res.results || []).map(item => ({ ...item, media_type: 'movie' as const })));
     const seen = new Map<number, Movie>();
     allMovies.forEach(m => { if (!seen.has(m.id)) seen.set(m.id, m); });
-    return Array.from(seen.values()).slice(0, 250);
-  } catch (error) {
+    return Array.from(seen.values());
+  } catch {
     return getFallbackMovies();
   }
 }
