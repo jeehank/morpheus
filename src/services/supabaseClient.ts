@@ -1,30 +1,24 @@
-import type { UserAccount, Review } from '../types';
+import { createClient } from '@supabase/supabase-js';
+import type { UserAccount, Review, ReviewReport } from '../types';
+import { containsProfanity } from './profanityFilter';
 
-const USERS_KEY = 'igmdb_users_db_v3';
-const REVIEWS_KEY = 'igmdb_reviews_db_v3';
-const CURRENT_USER_KEY = 'igmdb_current_user_v3';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nlvunhotvqawgpemkjvf.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdnVuaG90dnFawgpemkjvfIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTA5ODQsImV4cCI6MjEwMTUyNjk4NH0.RtVR7Ok3rKlG188lfZ_YFO7kn_CIwdRKko6kLnP64jc';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const USERS_KEY = 'igmdb_users_db_v4';
+const REVIEWS_KEY = 'igmdb_reviews_db_v4';
+const CURRENT_USER_KEY = 'igmdb_current_user_v4';
 
 export async function getClientIp(): Promise<string> {
   try {
     const res = await fetch('https://api.ipify.org?format=json');
     const data = await res.json();
     return data.ip || '127.0.0.1';
-  } catch (err) {
+  } catch {
     return '127.0.0.1';
   }
-}
-
-export function getStoredAccounts(): UserAccount[] {
-  try {
-    const data = localStorage.getItem(USERS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredAccounts(accounts: UserAccount[]): void {
-  localStorage.setItem(USERS_KEY, JSON.stringify(accounts));
 }
 
 export function getCurrentUser(): UserAccount | null {
@@ -44,120 +38,482 @@ export function setCurrentUser(user: UserAccount | null): void {
   }
 }
 
-export async function registerUser(email: string, password: string, name: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+// User Registration via Supabase Auth
+export async function registerUser(
+  emailInput: string,
+  passwordInput: string,
+  nameInput: string
+): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+  const email = emailInput.trim();
+  const password = passwordInput.trim();
+  const name = nameInput.trim() || email.split('@')[0];
   const currentIp = await getClientIp();
-  const accounts = getStoredAccounts();
 
-  const existingIpAccount = accounts.find(a => a.ipAddress === currentIp);
-  if (existingIpAccount) {
-    return {
-      success: false,
-      error: `Registration blocked: An account (${existingIpAccount.email}) has already been registered from IP address ${currentIp}. Only one account per IP address is permitted.`
+  try {
+    // 1. Supabase Auth Sign Up
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, ip_address: currentIp }
+      }
+    });
+
+    if (authError && !authError.message.includes('already registered')) {
+      return { success: false, error: authError.message };
+    }
+
+    const userId = authData.user?.id || 'user_' + Date.now();
+
+    // 2. Insert into Supabase profiles table
+    const profileRole = (email.toLowerCase() === 'morpheus@morpheus.com' || email.toLowerCase() === 'morpheus') ? 'admin' : 'user';
+    
+    await supabase.from('profiles').upsert({
+      id: userId,
+      email,
+      username: name,
+      role: profileRole,
+      is_banned: false,
+      ip_address: currentIp
+    });
+
+    const userAccount: UserAccount = {
+      id: userId,
+      email,
+      name,
+      role: profileRole,
+      isBanned: false,
+      isEmailVerified: authData.user?.email_confirmed_at ? true : false,
+      isGoogleAuth: false,
+      ipAddress: currentIp,
+      createdAt: new Date().toISOString(),
+      watchlist: [],
+      playlists: [
+        { id: 'pl_favorites', name: 'My Favorites', description: 'All-time favorite titles', items: [] }
+      ],
+      continueWatching: []
     };
+
+    setCurrentUser(userAccount);
+    return { success: true, user: userAccount };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Registration failed' };
   }
-
-  const existingEmailAccount = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
-  if (existingEmailAccount) {
-    return {
-      success: false,
-      error: 'An account with this email address already exists. Please sign in.'
-    };
-  }
-
-  if (!password || password.length < 4) {
-    return {
-      success: false,
-      error: 'Password must be at least 4 characters long.'
-    };
-  }
-
-  // Directly set isEmailVerified: true (Removed code verification requirement)
-  const newUser: UserAccount = {
-    id: 'user_' + Date.now(),
-    email: email.trim(),
-    password: password.trim(),
-    name: name.trim() || email.split('@')[0],
-    isEmailVerified: true,
-    isGoogleAuth: false,
-    ipAddress: currentIp,
-    createdAt: new Date().toISOString(),
-    watchlist: [],
-    playlists: [
-      { id: 'pl_favorites', name: 'My Favorites', description: 'All-time favorite movies and games', items: [] },
-      { id: 'pl_weekend', name: 'Weekend Binge', description: 'Titles planned for this weekend', items: [] }
-    ],
-    continueWatching: []
-  };
-
-  accounts.push(newUser);
-  saveStoredAccounts(accounts);
-  setCurrentUser(newUser);
-
-  return { success: true, user: newUser };
 }
 
-export async function registerWithGoogle(googleEmailInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+// Unified Login for Users, Admin (morpheus), and Moderators via Supabase Auth
+export async function loginUser(
+  emailOrUsernameInput: string,
+  passwordInput: string
+): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+  const input = emailOrUsernameInput.trim();
+  const password = passwordInput.trim();
   const currentIp = await getClientIp();
-  const accounts = getStoredAccounts();
 
-  const googleEmail = googleEmailInput.trim();
-  if (!googleEmail || !googleEmail.includes('@')) {
-    return { success: false, error: 'Please enter a valid Google email address.' };
+  // Admin special mapping: morpheus -> morpheus@morpheus.com
+  let emailToUse = input;
+  if (input.toLowerCase() === 'morpheus') {
+    emailToUse = 'morpheus@morpheus.com';
   }
 
-  const existingIpAccount = accounts.find(a => a.ipAddress === currentIp);
-  if (existingIpAccount && existingIpAccount.email.toLowerCase() !== googleEmail.toLowerCase()) {
-    return {
-      success: false,
-      error: `Registration blocked: An account (${existingIpAccount.email}) has already been registered from IP address ${currentIp}.`
+  // 1. Check if Admin account is logging in for first time with password xclubskimkc.vercel.app
+  if (emailToUse.toLowerCase() === 'morpheus@morpheus.com') {
+    if (password !== 'xclubskimkc.vercel.app') {
+      return { success: false, error: 'Incorrect password for Admin account (morpheus).' };
+    }
+
+    // Try signing in or auto-creating morpheus admin account in Supabase
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: emailToUse,
+      password: password
+    });
+
+    let adminId = signInData.user?.id;
+
+    if (signInError) {
+      // Auto-register morpheus admin in Supabase if not yet present
+      const { data: signUpData } = await supabase.auth.signUp({
+        email: emailToUse,
+        password: password,
+        options: { data: { name: 'Morpheus (Admin)' } }
+      });
+      adminId = signUpData.user?.id || 'admin_morpheus';
+    }
+
+    await supabase.from('profiles').upsert({
+      id: adminId || 'admin_morpheus',
+      email: emailToUse,
+      username: 'Morpheus',
+      role: 'admin',
+      is_banned: false,
+      ip_address: currentIp
+    });
+
+    const adminUser: UserAccount = {
+      id: adminId || 'admin_morpheus',
+      email: emailToUse,
+      name: 'Morpheus (Admin)',
+      role: 'admin',
+      isBanned: false,
+      isEmailVerified: true,
+      isGoogleAuth: false,
+      ipAddress: currentIp,
+      createdAt: new Date().toISOString(),
+      watchlist: [],
+      playlists: [],
+      continueWatching: []
     };
+
+    setCurrentUser(adminUser);
+    return { success: true, user: adminUser };
   }
 
-  const existingUser = accounts.find(a => a.email.toLowerCase() === googleEmail.toLowerCase());
-  if (existingUser) {
-    setCurrentUser(existingUser);
-    return { success: true, user: existingUser };
+  // 2. Standard user / Moderator sign in via Supabase Auth
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: emailToUse,
+      password
+    });
+
+    if (authError) {
+      return { success: false, error: authError.message || 'Invalid email or password.' };
+    }
+
+    const userId = authData.user.id;
+
+    // Fetch user profile role & banned status from Supabase profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.is_banned) {
+      return { success: false, error: 'Your account has been banned by an administrator.' };
+    }
+
+    const role = profile?.role || 'user';
+    const userName = profile?.username || authData.user.user_metadata?.name || emailToUse.split('@')[0];
+
+    const userAccount: UserAccount = {
+      id: userId,
+      email: authData.user.email || emailToUse,
+      name: userName,
+      role: role,
+      isBanned: false,
+      isEmailVerified: authData.user.email_confirmed_at ? true : false,
+      isGoogleAuth: false,
+      ipAddress: currentIp,
+      createdAt: authData.user.created_at,
+      watchlist: [],
+      playlists: [],
+      continueWatching: []
+    };
+
+    setCurrentUser(userAccount);
+    return { success: true, user: userAccount };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Sign in failed.' };
   }
-
-  const newUser: UserAccount = {
-    id: 'google_user_' + Date.now(),
-    email: googleEmail,
-    name: googleEmail.split('@')[0],
-    isEmailVerified: true,
-    isGoogleAuth: true,
-    ipAddress: currentIp,
-    createdAt: new Date().toISOString(),
-    watchlist: [],
-    playlists: [
-      { id: 'pl_favorites', name: 'My Favorites', description: 'All-time favorite movies and games', items: [] }
-    ],
-    continueWatching: []
-  };
-
-  accounts.push(newUser);
-  saveStoredAccounts(accounts);
-  setCurrentUser(newUser);
-  return { success: true, user: newUser };
 }
 
-export async function loginUser(email: string, passwordInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
-  const accounts = getStoredAccounts();
-  const account = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
+// Google OAuth Sign In via Supabase
+export async function loginWithGoogle(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
 
-  if (!account) {
-    return { success: false, error: 'Account not found for this email. Please register first.' };
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Google Auth failed' };
   }
-
-  if (account.password && account.password !== passwordInput.trim()) {
-    return { success: false, error: 'Incorrect password. Please try again.' };
-  }
-
-  setCurrentUser(account);
-  return { success: true, user: account };
 }
 
 export function logoutUser(): void {
+  supabase.auth.signOut();
   setCurrentUser(null);
+}
+
+// Create Moderator Account (Admin Only)
+export async function createModeratorAccount(
+  emailInput: string,
+  nameInput: string,
+  passwordInput: string
+): Promise<{ success: boolean; error?: string }> {
+  const email = emailInput.trim();
+  const password = passwordInput.trim();
+  const name = nameInput.trim() || email.split('@')[0];
+
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, role: 'moderator' } }
+    });
+
+    if (authError && !authError.message.includes('already registered')) {
+      return { success: false, error: authError.message };
+    }
+
+    const modId = authData.user?.id || 'mod_' + Date.now();
+
+    await supabase.from('profiles').upsert({
+      id: modId,
+      email,
+      username: name,
+      role: 'moderator',
+      is_banned: false
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to create moderator account.' };
+  }
+}
+
+// Reviews Operations (Supabase DB)
+export async function fetchReviews(mediaId: string | number, mediaType: 'movie' | 'game'): Promise<Review[]> {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('media_id', String(mediaId))
+      .eq('media_type', mediaType)
+      .order('created_at', { ascending: false });
+
+    if (error || !data) {
+      return getStoredReviews().filter(r => String(r.mediaId) === String(mediaId) && r.mediaType === mediaType);
+    }
+
+    return data.map(r => ({
+      id: r.id,
+      mediaId: r.media_id,
+      mediaType: r.media_type,
+      mediaTitle: r.media_title,
+      userId: r.user_id,
+      userName: r.user_name,
+      userEmail: r.user_email,
+      isVerifiedEmail: true,
+      isGoogleUser: false,
+      rating: Number(r.rating),
+      headline: r.headline,
+      content: r.content,
+      isSpoiler: Boolean(r.is_spoiler),
+      createdAt: r.created_at,
+      userIp: r.user_ip
+    }));
+  } catch {
+    return getStoredReviews().filter(r => String(r.mediaId) === String(mediaId) && r.mediaType === mediaType);
+  }
+}
+
+export async function addReview(
+  mediaId: string | number,
+  mediaType: 'movie' | 'game',
+  mediaTitle: string,
+  rating: number,
+  headline: string,
+  content: string,
+  isSpoiler: boolean = false
+): Promise<{ success: boolean; review?: Review; error?: string }> {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    return { success: false, error: 'You must be signed in to post a review.' };
+  }
+
+  if (currentUser.isBanned) {
+    return { success: false, error: 'Your account is banned from posting reviews.' };
+  }
+
+  // Check Profanity
+  if (containsProfanity(headline) || containsProfanity(content)) {
+    return {
+      success: false,
+      error: 'Review blocked: Your review contains prohibited curse/profane words. Please clean up your language before submitting.'
+    };
+  }
+
+  const newReviewData = {
+    media_id: String(mediaId),
+    media_type: mediaType,
+    media_title: mediaTitle,
+    user_id: currentUser.id,
+    user_name: currentUser.name,
+    user_email: currentUser.email,
+    rating: rating,
+    headline: headline,
+    content: content,
+    is_spoiler: isSpoiler,
+    user_ip: currentUser.ipAddress
+  };
+
+  try {
+    const { data, error } = await supabase.from('reviews').insert(newReviewData).select().single();
+
+    if (error) {
+      console.warn('Supabase review insert error, fallback local:', error);
+    }
+
+    const reviewObj: Review = {
+      id: data?.id || 'rev_' + Date.now(),
+      mediaId,
+      mediaType,
+      mediaTitle,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userEmail: currentUser.email,
+      isVerifiedEmail: currentUser.isEmailVerified,
+      isGoogleUser: currentUser.isGoogleAuth,
+      rating,
+      headline,
+      content,
+      isSpoiler,
+      createdAt: new Date().toISOString(),
+      userIp: currentUser.ipAddress
+    };
+
+    const localRevs = getStoredReviews();
+    localRevs.unshift(reviewObj);
+    saveStoredReviews(localRevs);
+
+    return { success: true, review: reviewObj };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to submit review' };
+  }
+}
+
+export async function toggleReviewSpoiler(reviewId: string, isSpoiler: boolean): Promise<boolean> {
+  try {
+    await supabase.from('reviews').update({ is_spoiler: isSpoiler }).eq('id', reviewId);
+    
+    // Update local cache
+    const localRevs = getStoredReviews().map(r => r.id === reviewId ? { ...r, isSpoiler } : r);
+    saveStoredReviews(localRevs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteReview(reviewId: string): Promise<boolean> {
+  try {
+    await supabase.from('reviews').delete().eq('id', reviewId);
+    const localRevs = getStoredReviews().filter(r => r.id !== reviewId);
+    saveStoredReviews(localRevs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function reportReview(reviewId: string, reason: string = 'spoiler'): Promise<{ success: boolean; error?: string }> {
+  const currentUser = getCurrentUser();
+  try {
+    await supabase.from('reports').insert({
+      review_id: reviewId,
+      reported_by: currentUser?.id || null,
+      reason: reason,
+      status: 'pending'
+    });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to submit report' };
+  }
+}
+
+export async function fetchAdminReports(): Promise<ReviewReport[]> {
+  try {
+    const { data: reportsData } = await supabase.from('reports').select('*').eq('status', 'pending');
+    if (!reportsData) return [];
+
+    const reviewIds = reportsData.map(r => r.review_id);
+    const { data: reviewsData } = await supabase.from('reviews').select('*').in('id', reviewIds);
+
+    return reportsData.map(rep => {
+      const rev = reviewsData?.find(r => r.id === rep.review_id);
+      return {
+        id: rep.id,
+        reviewId: rep.review_id,
+        reportedBy: rep.reported_by || 'Anonymous User',
+        reason: rep.reason,
+        status: rep.status,
+        createdAt: rep.created_at,
+        review: rev ? {
+          id: rev.id,
+          mediaId: rev.media_id,
+          mediaType: rev.media_type,
+          mediaTitle: rev.media_title,
+          userId: rev.user_id,
+          userName: rev.user_name,
+          userEmail: rev.user_email,
+          isVerifiedEmail: true,
+          isGoogleUser: false,
+          rating: Number(rev.rating),
+          headline: rev.headline,
+          content: rev.content,
+          isSpoiler: Boolean(rev.is_spoiler),
+          createdAt: rev.created_at
+        } : undefined
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function resolveReport(reportId: string): Promise<boolean> {
+  try {
+    await supabase.from('reports').update({ status: 'resolved' }).eq('id', reportId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchAllProfiles(): Promise<any[]> {
+  try {
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function banUser(userId: string): Promise<boolean> {
+  try {
+    await supabase.from('profiles').update({ is_banned: true }).eq('id', userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function unbanUser(userId: string): Promise<boolean> {
+  try {
+    await supabase.from('profiles').update({ is_banned: false }).eq('id', userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Local Storage helpers for fallback
+export function getStoredAccounts(): UserAccount[] {
+  try {
+    const data = localStorage.getItem(USERS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredAccounts(accounts: UserAccount[]): void {
+  localStorage.setItem(USERS_KEY, JSON.stringify(accounts));
 }
 
 export function getStoredReviews(): Review[] {
@@ -171,44 +527,6 @@ export function getStoredReviews(): Review[] {
 
 export function saveStoredReviews(reviews: Review[]): void {
   localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
-}
-
-export async function addReview(
-  mediaId: string | number,
-  mediaType: 'movie' | 'game',
-  mediaTitle: string,
-  rating: number,
-  headline: string,
-  content: string
-): Promise<{ success: boolean; review?: Review; error?: string }> {
-  const currentUser = getCurrentUser();
-
-  if (!currentUser) {
-    return { success: false, error: 'You must be signed in to post a review.' };
-  }
-
-  const newReview: Review = {
-    id: 'rev_' + Date.now(),
-    mediaId,
-    mediaType,
-    mediaTitle,
-    userId: currentUser.id,
-    userName: currentUser.name,
-    userEmail: currentUser.email,
-    isVerifiedEmail: currentUser.isEmailVerified,
-    isGoogleUser: currentUser.isGoogleAuth,
-    rating,
-    headline,
-    content,
-    createdAt: new Date().toISOString(),
-    userIp: currentUser.ipAddress
-  };
-
-  const reviews = getStoredReviews();
-  reviews.unshift(newReview);
-  saveStoredReviews(reviews);
-
-  return { success: true, review: newReview };
 }
 
 export function updateUserWatchlist(mediaItem: { id: number | string; mediaType: 'movie' | 'game'; title: string; poster: string }): UserAccount | null {
@@ -226,10 +544,6 @@ export function updateUserWatchlist(mediaItem: { id: number | string; mediaType:
 
   const updatedUser = { ...user, watchlist: newWatchlist };
   setCurrentUser(updatedUser);
-
-  const accounts = getStoredAccounts().map(acc => acc.id === user.id ? updatedUser : acc);
-  saveStoredAccounts(accounts);
-
   return updatedUser;
 }
 
@@ -246,9 +560,5 @@ export function updateContinueWatching(mediaItem: { id: number | string; mediaTy
 
   const updatedUser = { ...user, continueWatching: filtered.slice(0, 10) };
   setCurrentUser(updatedUser);
-
-  const accounts = getStoredAccounts().map(acc => acc.id === user.id ? updatedUser : acc);
-  saveStoredAccounts(accounts);
-
   return updatedUser;
 }

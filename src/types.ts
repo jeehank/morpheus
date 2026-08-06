@@ -78,8 +78,19 @@ export interface Review {
   rating: number;
   headline: string;
   content: string;
+  isSpoiler?: boolean;
   createdAt: string;
   userIp?: string;
+}
+
+export interface ReviewReport {
+  id: string;
+  reviewId: string;
+  reportedBy: string;
+  reason: string;
+  status: 'pending' | 'resolved';
+  createdAt: string;
+  review?: Review;
 }
 
 export interface UserAccount {
@@ -87,6 +98,8 @@ export interface UserAccount {
   email: string;
   password?: string;
   name: string;
+  role?: 'admin' | 'moderator' | 'user';
+  isBanned?: boolean;
   isEmailVerified: boolean;
   isGoogleAuth: boolean;
   ipAddress: string;

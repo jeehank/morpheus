@@ -137,6 +137,21 @@ export async function fetchMovieWatchProviders(id: number | string): Promise<Wat
   }
 }
 
+export async function fetchMovieTrailerKey(id: number | string): Promise<string | null> {
+  try {
+    const data = await fetchFromTmdb<{ results: any[] }>(`/movie/${id}/videos`);
+    if (data.results && data.results.length > 0) {
+      const trailer = data.results.find((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'));
+      if (trailer) return trailer.key;
+      const anyYt = data.results.find((v: any) => v.site === 'YouTube');
+      if (anyYt) return anyYt.key;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function fetchPopularCelebs(): Promise<Array<{ id: number; name: string; profile_path: string | null; known_for_department: string; popularity: number; known_for: string }>> {
   try {
     const data = await fetchFromTmdb<{ results: any[] }>('/person/popular');
