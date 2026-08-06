@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Plus, Check, Tv, User } from 'lucide-react';
-import { fetchMovieDetails, fetchMovieWatchProviders, fetchMovieCredits, getTmdbImageUrl } from '../services/tmdbApi';
+import { Star, Plus, Check, Tv, User, Play, Eye, EyeOff, MoreVertical, Flag, Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { fetchMovieDetails, fetchMovieWatchProviders, fetchMovieCredits, fetchMovieTrailerKey, getTmdbImageUrl } from '../services/tmdbApi';
 import { fetchGameDetails } from '../services/thegamesdbApi';
-import { getStoredReviews, addReview, getCurrentUser, updateUserWatchlist, updateContinueWatching } from '../services/supabaseClient';
+import {
+  fetchReviews,
+  addReview,
+  getCurrentUser,
+  updateUserWatchlist,
+  updateContinueWatching,
+  toggleReviewSpoiler,
+  deleteReview,
+  reportReview
+} from '../services/supabaseClient';
+import { TrailerModal } from '../components/TrailerModal';
 import { PlatformLogo } from '../components/PlatformLogos';
 import type { Movie, Game, Review, UserAccount, WatchProvidersResult, CastMember } from '../types';
 
@@ -26,13 +36,25 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
   const [isLoading, setIsLoading] = useState(true);
 
+  // Trailer state
+  const [trailerKey, setTrailerKey] = useState<string | null>(null);
+  const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
+
   // Review Form State
   const [userRating, setUserRating] = useState(9);
   const [reviewHeadline, setReviewHeadline] = useState('');
   const [reviewContent, setReviewContent] = useState('');
+  const [isSpoilerInput, setIsSpoilerInput] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Revealed Spoilers Set
+  const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
+
+  // Active Menu Review ID
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -41,17 +63,20 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
         const item = await fetchMovieDetails(id);
         const provs = await fetchMovieWatchProviders(id);
         const creditsData = await fetchMovieCredits(id);
+        const tKey = await fetchMovieTrailerKey(id);
+
         setMediaItem(item);
         setProviders(provs);
         setCast(creditsData);
+        setTrailerKey(tKey);
       } else {
         const item = await fetchGameDetails(id);
         setMediaItem(item);
       }
 
-      const allRevs = getStoredReviews();
-      const filtered = allRevs.filter(r => String(r.mediaId) === String(id) && r.mediaType === type);
-      setReviews(filtered);
+      // Fetch reviews from Supabase DB
+      const dbRevs = await fetchReviews(id, type);
+      setReviews(dbRevs);
       setIsLoading(false);
 
       if (mediaItem) {
@@ -69,7 +94,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   if (isLoading) {
     return (
       <div className="container" style={{ padding: '60px 0', textAlign: 'center', color: '#aaa' }}>
-        <h2>Loading title details...</h2>
+        <h2>Loading title details & reviews...</h2>
       </div>
     );
   }
@@ -102,6 +127,8 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
     w => String(w.id) === String(id) && w.mediaType === type
   ) || false;
 
+  const isAdminOrMod = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.email.toLowerCase() === 'morpheus@morpheus.com';
+
   const handleToggleWatchlist = () => {
     const user = getCurrentUser();
     if (!user) {
@@ -123,7 +150,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
     }
 
     setIsSubmittingReview(true);
-    const res = await addReview(id, type, title, userRating, reviewHeadline, reviewContent);
+    const res = await addReview(id, type, title, userRating, reviewHeadline, reviewContent, isSpoilerInput);
     setIsSubmittingReview(false);
 
     if (!res.success) {
@@ -135,8 +162,47 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       setReviews([res.review, ...reviews]);
       setReviewHeadline('');
       setReviewContent('');
+      setIsSpoilerInput(false);
       setReviewSuccess(true);
     }
+  };
+
+  const toggleRevealSpoiler = (reviewId: string) => {
+    setRevealedSpoilers(prev => {
+      const next = new Set(prev);
+      if (next.has(reviewId)) {
+        next.delete(reviewId);
+      } else {
+        next.add(reviewId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSpoilerTag = async (reviewId: string, currentSpoilerState: boolean) => {
+    await toggleReviewSpoiler(reviewId, !currentSpoilerState);
+    setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, isSpoiler: !currentSpoilerState } : r));
+    setActiveMenuId(null);
+  };
+
+  const handleDeleteReviewCard = async (reviewId: string) => {
+    await deleteReview(reviewId);
+    setReviews(prev => prev.filter(r => r.id !== reviewId));
+    setActiveMenuId(null);
+  };
+
+  const handleReportReviewCard = async (reviewId: string) => {
+    if (!currentUser) {
+      onOpenAuth();
+      return;
+    }
+    setReportStatus(null);
+    const res = await reportReview(reviewId, 'spoiler');
+    if (res.success) {
+      setReportStatus('Review reported to moderators.');
+      setTimeout(() => setReportStatus(null), 3000);
+    }
+    setActiveMenuId(null);
   };
 
   return (
@@ -194,7 +260,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
           <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        {/* Backdrop Hero */}
+        {/* Backdrop Hero with Watch Trailer Button */}
         <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#000' }}>
           <img src={backdropUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.65 }} />
           
@@ -204,27 +270,45 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             background: 'linear-gradient(to top, rgba(18,18,18,0.9), transparent 60%)'
           }} />
 
-          <button
-            onClick={handleToggleWatchlist}
-            style={{
-              position: 'absolute',
-              bottom: '24px',
-              right: '24px',
-              backgroundColor: inWatchlist ? '#333' : 'rgba(0,0,0,0.7)',
-              color: inWatchlist ? '#fff' : 'var(--brand-orange)',
-              border: '1px solid var(--brand-orange)',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              padding: '12px 24px',
-              borderRadius: '30px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            {inWatchlist ? <Check size={18} /> : <Plus size={18} />}
-            <span>{inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
-          </button>
+          {/* Action Buttons: Watch Trailer & Add Watchlist */}
+          <div style={{ position: 'absolute', bottom: '24px', right: '24px', display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setIsTrailerModalOpen(true)}
+              style={{
+                backgroundColor: 'var(--brand-orange)',
+                color: '#000',
+                fontWeight: 900,
+                fontSize: '0.95rem',
+                padding: '12px 24px',
+                borderRadius: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Play size={20} fill="#000" color="#000" />
+              <span>Watch Official Trailer</span>
+            </button>
+
+            <button
+              onClick={handleToggleWatchlist}
+              style={{
+                backgroundColor: inWatchlist ? '#333' : 'rgba(0,0,0,0.7)',
+                color: inWatchlist ? '#fff' : '#fff',
+                border: '1px solid #444',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                padding: '12px 24px',
+                borderRadius: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {inWatchlist ? <Check size={18} /> : <Plus size={18} />}
+              <span>{inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -233,7 +317,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px' }}>
         
         <div>
-          {/* Synopsis / Storyline */}
+          {/* Storyline */}
           <section style={{ marginBottom: '32px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '12px' }}>
               Storyline & Overview
@@ -243,7 +327,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             </p>
           </section>
 
-          {/* Cast & Crew Section (TMDB Database Integration) */}
+          {/* Cast & Crew Section */}
           {type === 'movie' && cast.length > 0 && (
             <section style={{ marginBottom: '32px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '16px' }}>
@@ -274,40 +358,21 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             </section>
           )}
 
-          {/* Genres & Platforms */}
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '12px' }}>
-              {type === 'movie' ? 'Genres & Details' : 'Platforms'}
-            </h2>
-            
-            {type === 'movie' && (mediaItem as Movie).genres ? (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {(mediaItem as Movie).genres?.map(g => (
-                  <span key={g.id} style={{ backgroundColor: '#2a2a2a', color: '#fff', fontSize: '0.85rem', padding: '6px 14px', borderRadius: '20px', border: '1px solid #3a3a3a' }}>
-                    {g.name}
-                  </span>
-                ))}
-              </div>
-            ) : type === 'game' ? (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {(mediaItem as Game).platforms?.map((p: any, idx) => (
-                  <span key={idx} style={{ backgroundColor: '#2a2a2a', color: '#fff', fontSize: '0.85rem', padding: '6px 14px', borderRadius: '20px', border: '1px solid #3a3a3a' }}>
-                    {typeof p === 'string' ? p : p.name}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
           {/* Community Reviews Section */}
           <section id="review-section" style={{ marginBottom: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px' }}>
                 User Reviews ({reviews.length})
               </h2>
+
+              {reportStatus && (
+                <div style={{ color: '#4ade80', fontSize: '0.85rem', backgroundColor: 'rgba(34, 197, 94, 0.15)', padding: '4px 10px', borderRadius: '4px' }}>
+                  {reportStatus}
+                </div>
+              )}
             </div>
 
-            {/* Review Submission Form */}
+            {/* Review Submission Form with Profanity Filter & Spoiler Checkbox */}
             <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: '8px', padding: '20px', marginBottom: '24px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '12px' }}>
                 Write a Review for {title}
@@ -325,13 +390,14 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
               ) : (
                 <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {reviewError && (
-                    <div style={{ color: '#ef4444', fontSize: '0.85rem', backgroundColor: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: '4px' }}>
-                      {reviewError}
+                    <div style={{ color: '#ef4444', fontSize: '0.85rem', backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', padding: '10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AlertTriangle size={18} />
+                      <div>{reviewError}</div>
                     </div>
                   )}
                   {reviewSuccess && (
                     <div style={{ color: '#22c55e', fontSize: '0.85rem', backgroundColor: 'rgba(34,197,94,0.1)', padding: '8px', borderRadius: '4px' }}>
-                      Review submitted successfully!
+                      Review submitted successfully to Supabase!
                     </div>
                   )}
 
@@ -373,11 +439,25 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                   <div>
                     <textarea
                       rows={4}
-                      placeholder="Write your detailed review here..."
+                      placeholder="Write your detailed review here (Profanity filter active)..."
                       value={reviewContent}
                       onChange={(e) => setReviewContent(e.target.value)}
                       style={{ width: '100%', backgroundColor: '#121212', border: '1px solid #333', borderRadius: '6px', padding: '10px', color: '#fff', fontSize: '0.9rem', outline: 'none' }}
                     />
+                  </div>
+
+                  {/* Spoiler Checkbox */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      id="spoilerCheck"
+                      checked={isSpoilerInput}
+                      onChange={(e) => setIsSpoilerInput(e.target.checked)}
+                      style={{ accentColor: 'var(--brand-orange)', width: '16px', height: '16px' }}
+                    />
+                    <label htmlFor="spoilerCheck" style={{ fontSize: '0.85rem', color: '#ccc', cursor: 'pointer' }}>
+                      Mark this review as containing spoilers
+                    </label>
                   </div>
 
                   <button
@@ -398,28 +478,144 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                   No reviews posted yet for this title. Be the first to review!
                 </div>
               ) : (
-                reviews.map((rev) => (
-                  <div key={rev.id} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: '8px', padding: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{rev.userName}</span>
+                reviews.map((rev) => {
+                  const isAuthor = currentUser?.id === rev.userId;
+                  const isRevealed = revealedSpoilers.has(rev.id);
+
+                  return (
+                    <div key={rev.id} style={{ backgroundColor: '#1a1a1a', border: rev.isSpoiler ? '1px solid #d97706' : '1px solid #2e2e2e', borderRadius: '8px', padding: '16px', position: 'relative' }}>
+                      
+                      {/* Top Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{rev.userName}</span>
+                          {rev.isSpoiler && (
+                            <span style={{ backgroundColor: '#d97706', color: '#000', fontSize: '0.7rem', fontWeight: 900, padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                              SPOILER
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontWeight: 800, fontSize: '0.9rem' }}>
+                            <Star size={16} fill="var(--star-yellow)" color="var(--star-yellow)" />
+                            <span>{rev.rating}/10</span>
+                          </div>
+
+                          {/* 3-Dots Menu */}
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              onClick={() => setActiveMenuId(activeMenuId === rev.id ? null : rev.id)}
+                              style={{ color: '#aaa', padding: '4px' }}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+
+                            {activeMenuId === rev.id && (
+                              <div style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '26px',
+                                backgroundColor: '#242424',
+                                border: '1px solid #383838',
+                                borderRadius: '6px',
+                                width: '180px',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
+                                zIndex: 100,
+                                overflow: 'hidden'
+                              }}>
+                                {(isAuthor || isAdminOrMod) && (
+                                  <button
+                                    onClick={() => handleToggleSpoilerTag(rev.id, !!rev.isSpoiler)}
+                                    style={{ width: '100%', textAlign: 'left', padding: '10px 12px', fontSize: '0.82rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    <EyeOff size={14} color="var(--brand-orange)" />
+                                    <span>{rev.isSpoiler ? 'Remove Spoiler Tag' : 'Mark as Spoiler'}</span>
+                                  </button>
+                                )}
+
+                                {(isAuthor || isAdminOrMod) && (
+                                  <button
+                                    onClick={() => handleDeleteReviewCard(rev.id)}
+                                    style={{ width: '100%', textAlign: 'left', padding: '10px 12px', fontSize: '0.82rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>Delete Review</span>
+                                  </button>
+                                )}
+
+                                {!isAuthor && (
+                                  <button
+                                    onClick={() => handleReportReviewCard(rev.id)}
+                                    style={{ width: '100%', textAlign: 'left', padding: '10px 12px', fontSize: '0.82rem', color: '#ff9800', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    <Flag size={14} />
+                                    <span>Report as Spoiler</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontWeight: 800, fontSize: '0.9rem' }}>
-                        <Star size={16} fill="var(--star-yellow)" color="var(--star-yellow)" />
-                        <span>{rev.rating}/10</span>
+
+                      {/* Headline */}
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--brand-orange)', marginBottom: '6px' }}>
+                        {rev.headline}
+                      </div>
+
+                      {/* Review Content with Spoiler Blur */}
+                      {rev.isSpoiler && !isRevealed ? (
+                        <div style={{ backgroundColor: '#121212', border: '1px border #2a2a2a', padding: '16px', borderRadius: '6px', textAlign: 'center', margin: '8px 0' }}>
+                          <p style={{ color: '#aaa', fontSize: '0.85rem', filter: 'blur(5px)', userSelect: 'none', marginBottom: '10px' }}>
+                            {rev.content}
+                          </p>
+                          <button
+                            onClick={() => toggleRevealSpoiler(rev.id)}
+                            style={{
+                              backgroundColor: '#d97706',
+                              color: '#000',
+                              fontWeight: 900,
+                              fontSize: '0.82rem',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <Eye size={14} />
+                            <span>Show Spoiler</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <p style={{ color: '#ccc', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                            {rev.content}
+                          </p>
+                          {rev.isSpoiler && isRevealed && (
+                            <button
+                              onClick={() => toggleRevealSpoiler(rev.id)}
+                              style={{ color: '#d97706', fontSize: '0.75rem', fontWeight: 700, marginTop: '8px', textDecoration: 'underline' }}
+                            >
+                              Hide Spoiler
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: '0.75rem', color: '#777', marginTop: '10px' }}>
+                        Posted on {new Date(rev.createdAt).toLocaleDateString()}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--brand-orange)', marginBottom: '6px' }}>
-                      {rev.headline}
-                    </div>
-                    <p style={{ color: '#ccc', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                      {rev.content}
-                    </p>
-                    <div style={{ fontSize: '0.75rem', color: '#777', marginTop: '10px' }}>
-                      Posted on {new Date(rev.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
@@ -471,6 +667,14 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
         </div>
 
       </div>
+
+      {/* Trailer Modal */}
+      <TrailerModal
+        isOpen={isTrailerModalOpen}
+        title={title}
+        videoKey={trailerKey || undefined}
+        onClose={() => setIsTrailerModalOpen(false)}
+      />
 
     </div>
   );
