@@ -3,7 +3,7 @@ import { Calendar, Clock, Star, Plus, Check, Loader2 } from 'lucide-react';
 import { fetchUpcomingMovies, fetchNowPlayingMovies } from '../services/tmdbApi';
 import { fetchUpcomingGames, fetchPopularGames } from '../services/thegamesdbApi';
 import type { Movie, Game, UserAccount } from '../types';
-import { getCurrentUser, updateUserWatchlist } from '../services/firebaseClient';
+import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface SchedulePageProps {
   onNavigate: (page: string, params?: any) => void;

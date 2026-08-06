@@ -10,7 +10,7 @@ import {
   banUser,
   unbanUser,
   fetchAllProfiles
-} from '../services/firebaseClient';
+} from '../services/supabaseClient';
 import type { ReviewReport, UserAccount } from '../types';
 
 interface AdminPanelPageProps {
