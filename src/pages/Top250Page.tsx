@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { fetchTop250MoviesFull } from '../services/tmdbApi';
 import { MediaCard } from '../components/MediaCard';
 import type { Movie } from '../types';

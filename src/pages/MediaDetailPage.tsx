@@ -91,11 +91,11 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   const releaseDate = mediaItem.release_date || (mediaItem as Game).released || 'N/A';
   
   const backdropUrl = type === 'movie'
-    ? getTmdbImageUrl(mediaItem.backdrop_path, 'original')
+    ? getTmdbImageUrl(mediaItem.backdrop_path ?? null, 'original')
     : ((mediaItem as Game).backdrop_path || (mediaItem as Game).cover_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200');
 
   const posterUrl = type === 'movie'
-    ? getTmdbImageUrl(mediaItem.poster_path, 'w500')
+    ? getTmdbImageUrl(mediaItem.poster_path ?? null, 'w500')
     : ((mediaItem as Game).cover_url || (mediaItem as Game).poster_path || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500');
 
   const inWatchlist = currentUser?.watchlist.some(
