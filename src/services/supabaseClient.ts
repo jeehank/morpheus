@@ -1,17 +1,8 @@
 import type { UserAccount, Review } from '../types';
 
-const USERS_KEY = 'igmdb_users_db_v2';
-const REVIEWS_KEY = 'igmdb_reviews_db_v2';
-const CURRENT_USER_KEY = 'igmdb_current_user_v2';
-
-// Wipe legacy storage
-try {
-  localStorage.removeItem('igmdb_users_db_v1');
-  localStorage.removeItem('igmdb_reviews_db_v1');
-  localStorage.removeItem('igmdb_current_user_v1');
-} catch (e) {
-  // ignore
-}
+const USERS_KEY = 'igmdb_users_db_v3';
+const REVIEWS_KEY = 'igmdb_reviews_db_v3';
+const CURRENT_USER_KEY = 'igmdb_current_user_v3';
 
 export async function getClientIp(): Promise<string> {
   try {
@@ -53,7 +44,7 @@ export function setCurrentUser(user: UserAccount | null): void {
   }
 }
 
-export async function registerUser(email: string, password: string, name: string): Promise<{ success: boolean; user?: UserAccount; error?: string; verificationCode?: string }> {
+export async function registerUser(email: string, password: string, name: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
   const currentIp = await getClientIp();
   const accounts = getStoredAccounts();
 
@@ -80,14 +71,13 @@ export async function registerUser(email: string, password: string, name: string
     };
   }
 
-  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
+  // Directly set isEmailVerified: true (Removed code verification requirement)
   const newUser: UserAccount = {
     id: 'user_' + Date.now(),
     email: email.trim(),
     password: password.trim(),
     name: name.trim() || email.split('@')[0],
-    isEmailVerified: false,
+    isEmailVerified: true,
     isGoogleAuth: false,
     ipAddress: currentIp,
     createdAt: new Date().toISOString(),
@@ -103,7 +93,7 @@ export async function registerUser(email: string, password: string, name: string
   saveStoredAccounts(accounts);
   setCurrentUser(newUser);
 
-  return { success: true, user: newUser, verificationCode };
+  return { success: true, user: newUser };
 }
 
 export async function registerWithGoogle(googleEmailInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
@@ -148,26 +138,6 @@ export async function registerWithGoogle(googleEmailInput: string): Promise<{ su
   saveStoredAccounts(accounts);
   setCurrentUser(newUser);
   return { success: true, user: newUser };
-}
-
-export function verifyEmailCode(user: UserAccount, enteredCode: string, targetCode: string): { success: boolean; error?: string } {
-  if (enteredCode !== targetCode && enteredCode !== '123456') {
-    return { success: false, error: 'Invalid verification code. Please check and try again (Demo code: 123456).' };
-  }
-
-  const accounts = getStoredAccounts();
-  const updatedAccounts = accounts.map(acc => {
-    if (acc.id === user.id) {
-      return { ...acc, isEmailVerified: true };
-    }
-    return acc;
-  });
-
-  saveStoredAccounts(updatedAccounts);
-
-  const updatedUser = { ...user, isEmailVerified: true };
-  setCurrentUser(updatedUser);
-  return { success: true };
 }
 
 export async function loginUser(email: string, passwordInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
@@ -215,13 +185,6 @@ export async function addReview(
 
   if (!currentUser) {
     return { success: false, error: 'You must be signed in to post a review.' };
-  }
-
-  if (!currentUser.isEmailVerified && !currentUser.isGoogleAuth) {
-    return {
-      success: false,
-      error: 'Review posted failed: Your email address must be verified before submitting reviews! Check your account center or enter your verification code.'
-    };
   }
 
   const newReview: Review = {
