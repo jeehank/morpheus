@@ -1,10 +1,7 @@
-import { Game } from '../types';
-
-const THEGAMESDB_API_KEY = '72f0f123b332f3930d9c0715999b0d86db490a5bdb42eba1ec3b9e10414a72f2';
+import type { Game } from '../types';
 
 export async function fetchPopularGames(): Promise<Game[]> {
   try {
-    // Attempt fetching from rawg or thegamesdb proxy endpoint
     const res = await fetch(`https://api.rawg.io/api/games?key=c534458d0c39434882797e8e178ee7df&page_size=20&ordering=-rating`);
     const data = await res.json();
     if (data.results && data.results.length > 0) {
