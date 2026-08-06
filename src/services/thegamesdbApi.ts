@@ -1,88 +1,115 @@
 import type { Game } from '../types';
 
-export async function fetchPopularGames(): Promise<Game[]> {
+export const IGDB_PROXY_BASE = "https://igdb-proxy-production.up.railway.app";
+export const IGDB_IMG_BASE = "https://images.igdb.com/igdb/image/upload/t_cover_big";
+
+export function buildGamesQuery(filters?: any, offset = 0): string {
+  const clauses = [
+    "fields name,total_rating,total_rating_count,aggregated_rating,rating,first_release_date,genres.name,cover.image_id,summary,platforms.name",
+    "sort total_rating_count desc",
+    `limit 60`,
+    `offset ${offset}`
+  ];
+
+  const whereParts = ["total_rating_count > 5"];
+  const genreId = filters && filters.genre;
+  if (genreId && genreId !== "all") whereParts.push(`genres = (${genreId})`);
+  if (filters && filters.year) {
+    const start = Math.floor(new Date(`${filters.year}-01-01T00:00:00Z`).getTime() / 1000);
+    const end = Math.floor(new Date(`${Number(filters.year) + 1}-01-01T00:00:00Z`).getTime() / 1000);
+    whereParts.push(`first_release_date >= ${start} & first_release_date < ${end}`);
+  }
+  clauses.push(`where ${whereParts.join(" & ")}`);
+
+  return clauses.join(";\n") + ";";
+}
+
+export async function fetchGamesFromIGDB(filters?: any): Promise<Game[]> {
   try {
-    const res = await fetch(`https://api.rawg.io/api/games?key=c534458d0c39434882797e8e178ee7df&page_size=20&ordering=-rating`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      return data.results.map((g: any) => formatRawgGame(g));
-    }
+    const offsets = [0, 60, 120];
+    const requests = offsets.map(offset =>
+      fetch(`${IGDB_PROXY_BASE}/games`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: buildGamesQuery(filters, offset)
+      }).then(res => {
+        if (!res.ok) throw new Error(`IGDB proxy responded with status ${res.status}`);
+        return res.json();
+      })
+    );
+
+    const resultsArray = await Promise.all(requests);
+    let games = resultsArray.flat().filter(Boolean);
+
+    const seen = new Map();
+    games.forEach(g => { if (!seen.has(g.id)) seen.set(g.id, g); });
+    const formatted = Array.from(seen.values()).map(g => formatIgdbGame(g));
+    if (formatted.length > 0) return formatted;
     return getFallbackGames();
   } catch (err) {
-    console.error('Error fetching games:', err);
+    console.warn('IGDB Proxy fetch error, using fallbacks:', err);
     return getFallbackGames();
   }
+}
+
+export async function fetchPopularGames(): Promise<Game[]> {
+  return fetchGamesFromIGDB();
 }
 
 export async function fetchTrendingGames(): Promise<Game[]> {
-  try {
-    const res = await fetch(`https://api.rawg.io/api/games?key=c534458d0c39434882797e8e178ee7df&page_size=20&ordering=-added`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      return data.results.map((g: any) => formatRawgGame(g));
-    }
-    return getFallbackGames();
-  } catch (err) {
-    return getFallbackGames();
-  }
+  return fetchGamesFromIGDB();
 }
 
 export async function fetchUpcomingGames(): Promise<Game[]> {
-  try {
-    const res = await fetch(`https://api.rawg.io/api/games?key=c534458d0c39434882797e8e178ee7df&page_size=20&dates=2024-01-01,2026-12-31&ordering=-added`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      return data.results.map((g: any) => formatRawgGame(g));
-    }
-    return getFallbackGames();
-  } catch (err) {
-    return getFallbackGames();
-  }
+  return fetchGamesFromIGDB({ year: 2026 });
 }
 
 export async function fetchGameDetails(id: number | string): Promise<Game | null> {
-  try {
-    const res = await fetch(`https://api.rawg.io/api/games/${id}?key=c534458d0c39434882797e8e178ee7df`);
-    const data = await res.json();
-    if (!data.id) return null;
-    return formatRawgGame(data);
-  } catch (err) {
-    const fallback = getFallbackGames().find(g => String(g.id) === String(id));
-    return fallback || null;
-  }
+  const games = await fetchGamesFromIGDB();
+  const match = games.find(g => String(g.id) === String(id));
+  if (match) return match;
+  return getFallbackGames().find(g => String(g.id) === String(id)) || null;
 }
 
 export async function searchGames(query: string): Promise<Game[]> {
   if (!query.trim()) return [];
-  try {
-    const res = await fetch(`https://api.rawg.io/api/games?key=c534458d0c39434882797e8e178ee7df&search=${encodeURIComponent(query)}&page_size=12`);
-    const data = await res.json();
-    return (data.results || []).map((g: any) => formatRawgGame(g));
-  } catch (err) {
-    return [];
-  }
+  const allGames = await fetchGamesFromIGDB();
+  return allGames.filter(g => g.name.toLowerCase().includes(query.toLowerCase()));
 }
 
-function formatRawgGame(g: any): Game {
+function formatIgdbGame(g: any): Game {
+  const imageId = g.cover?.image_id;
+  const coverUrl = imageId 
+    ? `${IGDB_IMG_BASE}/${imageId}.jpg`
+    : 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=80';
+
+  const releaseYear = g.first_release_date 
+    ? new Date(g.first_release_date * 1000).toISOString().split('T')[0]
+    : '2025-05-10';
+
+  const roundedRating = g.total_rating 
+    ? Math.round((g.total_rating / 10) * 10) / 10
+    : (g.rating ? Math.round((g.rating / 10) * 10) / 10 : 8.8);
+
   return {
     id: g.id,
     name: g.name,
-    summary: g.description_raw || g.overview || "An immersive high-tier title packed with action, deep storylines, and next-generation graphics.",
-    overview: g.description_raw || g.overview || "An immersive high-tier title packed with action, deep storylines, and next-generation graphics.",
-    cover_url: g.background_image || g.poster_path || "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=80",
-    poster_path: g.background_image || null,
-    backdrop_path: g.background_image_additional || g.background_image || null,
-    background_image: g.background_image || null,
-    release_date: g.released || g.release_date || "2024-03-22",
-    released: g.released || "2024-03-22",
-    rating: g.rating ? Math.round(g.rating * 2 * 10) / 10 : 8.8,
-    vote_average: g.rating ? Math.round(g.rating * 2 * 10) / 10 : 8.8,
-    rating_count: g.ratings_count || g.vote_count || 1420,
-    vote_count: g.ratings_count || 1420,
+    summary: g.summary || "An immersive high-tier video game packed with next-generation visuals and intense gameplay.",
+    overview: g.summary || "An immersive high-tier video game packed with next-generation visuals and intense gameplay.",
+    cover_url: coverUrl,
+    poster_path: coverUrl,
+    backdrop_path: coverUrl,
+    background_image: coverUrl,
+    release_date: releaseYear,
+    released: releaseYear,
+    rating: roundedRating,
+    vote_average: roundedRating,
+    rating_count: g.total_rating_count || 1420,
+    vote_count: g.total_rating_count || 1420,
     genres: Array.isArray(g.genres) ? g.genres.map((genre: any) => typeof genre === 'object' ? genre.name : genre) : ["Action", "RPG"],
-    platforms: Array.isArray(g.platforms) ? g.platforms.map((p: any) => p.platform?.name || p.name || p) : ["PC", "PlayStation 5", "Xbox Series X"],
-    developers: g.developers ? g.developers.map((d: any) => d.name) : ["AAA Studio"],
-    publishers: g.publishers ? g.publishers.map((p: any) => p.name) : ["Global Publishing"],
+    platforms: Array.isArray(g.platforms) ? g.platforms.map((p: any) => typeof p === 'object' ? p.name : p) : ["PC", "PlayStation 5", "Xbox Series X"],
+    developers: ["AAA Game Studio"],
+    publishers: ["Global Publishing"],
     media_type: 'game'
   };
 }
@@ -94,15 +121,15 @@ export function getFallbackGames(): Game[] {
       name: "Grand Theft Auto V",
       summary: "Grand Theft Auto V for PC offers players the option to explore the award-winning world of Los Santos and Blaine County in resolutions up to 4k and beyond.",
       overview: "Grand Theft Auto V for PC offers players the option to explore the award-winning world of Los Santos and Blaine County in resolutions up to 4k and beyond.",
-      cover_url: "https://media.rawg.io/media/games/20a/20aa692ee8e3ed0e27b1103dd64a4037.jpg",
-      poster_path: "https://media.rawg.io/media/games/20a/20aa692ee8e3ed0e27b1103dd64a4037.jpg",
-      backdrop_path: "https://media.rawg.io/media/screenshots/5f1/5f14170889218206d9d1ee55b253b216.jpg",
+      cover_url: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
+      poster_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
+      backdrop_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
       release_date: "2013-09-17",
       vote_average: 9.2,
       rating: 9.2,
       vote_count: 7200,
       genres: ["Action", "Adventure"],
-      platforms: ["PC", "PlayStation 5", "Xbox Series X/S"],
+      platforms: ["PC", "PlayStation 5", "Xbox Series X"],
       media_type: 'game'
     },
     {
@@ -110,47 +137,47 @@ export function getFallbackGames(): Game[] {
       name: "The Witcher 3: Wild Hunt",
       summary: "The Witcher: Wild Hunt is a story-driven, next-generation open world role-playing game set in a visually stunning fantasy universe.",
       overview: "The Witcher: Wild Hunt is a story-driven, next-generation open world role-playing game set in a visually stunning fantasy universe.",
-      cover_url: "https://media.rawg.io/media/games/618/618c47b6e41555e9ee0e025e19744d96.jpg",
-      poster_path: "https://media.rawg.io/media/games/618/618c47b6e41555e9ee0e025e19744d96.jpg",
-      backdrop_path: "https://media.rawg.io/media/screenshots/1ac/1ac14f38a90e8bcf2105be134d1b8012.jpg",
+      cover_url: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
+      poster_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
+      backdrop_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
       release_date: "2015-05-18",
       vote_average: 9.5,
       rating: 9.5,
       vote_count: 6500,
       genres: ["RPG", "Open World"],
-      platforms: ["PC", "PlayStation 4", "PlayStation 5", "Nintendo Switch"],
+      platforms: ["PC", "PlayStation 5", "Nintendo Switch"],
       media_type: 'game'
     },
     {
-      id: 5286,
-      name: "Tomb Raider (2013)",
-      summary: "Tomb Raider explores the intense and gritty origin story of Lara Croft and her ascent from a young woman to a hardened survivor.",
-      overview: "Tomb Raider explores the intense and gritty origin story of Lara Croft and her ascent from a young woman to a hardened survivor.",
-      cover_url: "https://media.rawg.io/media/games/021/021c4e21a1824d2526f925eee63711c6.jpg",
-      poster_path: "https://media.rawg.io/media/games/021/021c4e21a1824d2526f925eee63711c6.jpg",
-      backdrop_path: "https://media.rawg.io/media/screenshots/00f/00f074d306b9b3c3b0fb43d1a8e10410.jpg",
-      release_date: "2013-03-05",
-      vote_average: 8.6,
-      rating: 8.6,
-      vote_count: 4800,
-      genres: ["Action", "Adventure"],
-      platforms: ["PC", "PlayStation 4", "Xbox One"],
-      media_type: 'game'
-    },
-    {
-      id: 4200,
-      name: "Portal 2",
-      summary: "Portal 2 draws from the award-winning formula of innovative gameplay, story, and music that earned the original Portal over 70 industry accolades.",
-      overview: "Portal 2 draws from the award-winning formula of innovative gameplay, story, and music that earned the original Portal over 70 industry accolades.",
-      cover_url: "https://media.rawg.io/media/games/2ba/2bac0e87cf44e5b597b227d35b37cd21.jpg",
-      poster_path: "https://media.rawg.io/media/games/2ba/2bac0e87cf44e5b597b227d35b37cd21.jpg",
-      backdrop_path: "https://media.rawg.io/media/screenshots/250/25094cd3f3d7c37b2d5a37f516a75f7e.jpg",
-      release_date: "2011-04-18",
+      id: 1942,
+      name: "Elden Ring",
+      summary: "THE NEW FANTASY ACTION RPG. Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between.",
+      overview: "THE NEW FANTASY ACTION RPG. Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between.",
+      cover_url: "https://images.igdb.com/igdb/image/upload/t_cover_big/co4jni.jpg",
+      poster_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co4jni.jpg",
+      backdrop_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co4jni.jpg",
+      release_date: "2022-02-25",
       vote_average: 9.6,
       rating: 9.6,
-      vote_count: 5900,
-      genres: ["Puzzle", "Sci-Fi"],
-      platforms: ["PC", "PlayStation 3", "Xbox 360"],
+      vote_count: 9800,
+      genres: ["Action", "RPG"],
+      platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+      media_type: 'game'
+    },
+    {
+      id: 119133,
+      name: "Elden Ring: Shadow of the Erdtree",
+      summary: "An expansion for Elden Ring featuring a new story set in the Land of Shadow, filled with dangerous dungeons, terrifying bosses, and new weapons.",
+      overview: "An expansion for Elden Ring featuring a new story set in the Land of Shadow, filled with dangerous dungeons, terrifying bosses, and new weapons.",
+      cover_url: "https://images.igdb.com/igdb/image/upload/t_cover_big/co7vhn.jpg",
+      poster_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co7vhn.jpg",
+      backdrop_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co7vhn.jpg",
+      release_date: "2024-06-21",
+      vote_average: 9.4,
+      rating: 9.4,
+      vote_count: 4500,
+      genres: ["RPG", "Action"],
+      platforms: ["PC", "PlayStation 5", "Xbox Series X"],
       media_type: 'game'
     },
     {
@@ -158,14 +185,14 @@ export function getFallbackGames(): Game[] {
       name: "Red Dead Redemption 2",
       summary: "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run. With federal agents and the best bounty hunters in the nation massing on their heels.",
       overview: "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run. With federal agents and the best bounty hunters in the nation massing on their heels.",
-      cover_url: "https://media.rawg.io/media/games/511/51182150fea5e3a214a08fcc70116f41.jpg",
-      poster_path: "https://media.rawg.io/media/games/511/51182150fea5e3a214a08fcc70116f41.jpg",
-      backdrop_path: "https://media.rawg.io/media/screenshots/92d/92d19f446059d646f9166f25097491cf.jpg",
+      cover_url: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1qfc.jpg",
+      poster_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1qfc.jpg",
+      backdrop_path: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1qfc.jpg",
       release_date: "2018-10-26",
       vote_average: 9.7,
       rating: 9.7,
       vote_count: 8100,
-      genres: ["Action", "Adventure", "Western"],
+      genres: ["Action", "Adventure"],
       platforms: ["PC", "PlayStation 4", "Xbox One"],
       media_type: 'game'
     }

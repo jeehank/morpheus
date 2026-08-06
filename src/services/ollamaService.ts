@@ -18,7 +18,8 @@ export async function fetchOllamaModels(): Promise<string[]> {
 }
 
 export async function sendChatMessage(messages: ChatMessage[], userText: string, modelName: string = 'llama3'): Promise<ChatMessage> {
-  const promptText = `System: You are IGMDB AI Assistant, a cinematic & gaming expert. User query: "${userText}". Provide a concise, tailored recommendation response with specific title suggestions.`;
+  const conversationContext = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+  const promptText = `Context:\n${conversationContext}\n\nSystem: You are IGMDB AI Assistant, a cinematic & gaming expert. User query: "${userText}". Provide a concise, tailored recommendation response with specific title suggestions.`;
 
   try {
     const res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
@@ -35,7 +36,6 @@ export async function sendChatMessage(messages: ChatMessage[], userText: string,
       const data = await res.json();
       const aiReplyText = data.response || data.text;
 
-      // Extract movie or game keywords to attach live media cards dynamically
       const movieMatches = await searchMovies(userText.slice(0, 30));
       const gameMatches = await searchGames(userText.slice(0, 30));
 
@@ -68,7 +68,6 @@ export async function sendChatMessage(messages: ChatMessage[], userText: string,
     // If Ollama API is not running locally on 11434
   }
 
-  // Live dynamic media recommendation generator when Ollama service is starting up
   const movieMatches = await searchMovies(userText.trim() || 'Action');
   const gameMatches = await searchGames(userText.trim() || 'Action');
 
