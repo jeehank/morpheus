@@ -1,11 +1,11 @@
-import { Movie, WatchProvidersResult, CastMember } from '../types';
+import type { Movie, WatchProvidersResult, CastMember } from '../types';
 
 const TMDB_API_KEY = '991bd5c9855019bd9aeeee4679ddd856';
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 export const TMDB_ORIGINAL_IMAGE = 'https://image.tmdb.org/t/p/original';
 
-export function getTmdbImageUrl(path: string | null, size: 'w500' | 'original' = 'w500'): string {
+export function getTmdbImageUrl(path: string | null | undefined, size: 'w500' | 'original' = 'w500'): string {
   if (!path) return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
   if (path.startsWith('http')) return path;
   return size === 'original' ? `${TMDB_ORIGINAL_IMAGE}${path}` : `${TMDB_IMAGE_BASE}${path}`;
@@ -15,7 +15,7 @@ export async function fetchTrendingMovies(): Promise<Movie[]> {
   try {
     const res = await fetch(`${BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
-    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+    return (data.results || []).map((m: any) => ({ ...m, rating: m.vote_average, media_type: 'movie' }));
   } catch (err) {
     console.error('Error fetching trending movies:', err);
     return getFallbackMovies();
@@ -26,7 +26,7 @@ export async function fetchTopRatedMovies(): Promise<Movie[]> {
   try {
     const res = await fetch(`${BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
-    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+    return (data.results || []).map((m: any) => ({ ...m, rating: m.vote_average, media_type: 'movie' }));
   } catch (err) {
     console.error('Error fetching top rated movies:', err);
     return getFallbackMovies();
@@ -37,7 +37,7 @@ export async function fetchNowPlayingMovies(): Promise<Movie[]> {
   try {
     const res = await fetch(`${BASE_URL}/movie/now_playing?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
-    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+    return (data.results || []).map((m: any) => ({ ...m, rating: m.vote_average, media_type: 'movie' }));
   } catch (err) {
     console.error('Error fetching now playing movies:', err);
     return getFallbackMovies();
@@ -48,7 +48,7 @@ export async function fetchUpcomingMovies(): Promise<Movie[]> {
   try {
     const res = await fetch(`${BASE_URL}/movie/upcoming?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
-    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+    return (data.results || []).map((m: any) => ({ ...m, rating: m.vote_average, media_type: 'movie' }));
   } catch (err) {
     console.error('Error fetching upcoming movies:', err);
     return getFallbackMovies();
@@ -60,7 +60,7 @@ export async function fetchMovieDetails(id: number | string): Promise<Movie | nu
     const res = await fetch(`${BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,watch/providers`);
     const data = await res.json();
     if (!data.id) return null;
-    return { ...data, media_type: 'movie' };
+    return { ...data, rating: data.vote_average, media_type: 'movie' };
   } catch (err) {
     console.error('Error fetching movie details:', err);
     return null;
@@ -98,7 +98,6 @@ export async function fetchMovieWatchProviders(id: number | string): Promise<Wat
     const res = await fetch(`${BASE_URL}/movie/${id}/watch/providers?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
     const results = data.results || {};
-    // US or default country providers
     const usOrFirst = results.US || results.GB || results.IN || Object.values(results)[0];
     return usOrFirst || null;
   } catch (err) {
@@ -111,7 +110,7 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   try {
     const res = await fetch(`${BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`);
     const data = await res.json();
-    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+    return (data.results || []).map((m: any) => ({ ...m, rating: m.vote_average, media_type: 'movie' }));
   } catch (err) {
     return [];
   }
@@ -127,6 +126,7 @@ function getFallbackMovies(): Movie[] {
       backdrop_path: "/hZkgoQY85KGpToVUTeY2wA0my9D.jpg",
       release_date: "1999-10-15",
       vote_average: 8.4,
+      rating: 8.4,
       vote_count: 27500,
       media_type: "movie"
     },
@@ -138,6 +138,7 @@ function getFallbackMovies(): Movie[] {
       backdrop_path: "/8ZTVqvKDQ8emSGUEMjsv4yWBjfi.jpg",
       release_date: "2010-07-15",
       vote_average: 8.4,
+      rating: 8.4,
       vote_count: 35000,
       media_type: "movie"
     },
@@ -149,6 +150,7 @@ function getFallbackMovies(): Movie[] {
       backdrop_path: "/xJHokMbljvjADYdit5fK5VQsY2E.jpg",
       release_date: "2014-11-05",
       vote_average: 8.4,
+      rating: 8.4,
       vote_count: 33000,
       media_type: "movie"
     },
@@ -160,6 +162,7 @@ function getFallbackMovies(): Movie[] {
       backdrop_path: "/mGJu3aLq7Uuuftd2aYl8kQzK46o.jpg",
       release_date: "2018-04-25",
       vote_average: 8.3,
+      rating: 8.3,
       vote_count: 28000,
       media_type: "movie"
     },
@@ -171,6 +174,7 @@ function getFallbackMovies(): Movie[] {
       backdrop_path: "/nMK281iIdPMyHooRvxWZa27n32i.jpg",
       release_date: "2008-07-16",
       vote_average: 8.5,
+      rating: 8.5,
       vote_count: 31000,
       media_type: "movie"
     }

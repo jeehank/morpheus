@@ -7,6 +7,7 @@ export interface Movie {
   backdrop_path: string | null;
   release_date: string;
   vote_average: number;
+  rating?: number;
   vote_count: number;
   genre_ids?: number[];
   genres?: { id: number; name: string }[];
@@ -74,7 +75,7 @@ export interface Review {
   userEmail: string;
   isVerifiedEmail: boolean;
   isGoogleUser: boolean;
-  rating: number; // 1-10
+  rating: number;
   headline: string;
   content: string;
   createdAt: string;
