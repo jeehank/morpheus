@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Search, Bookmark, User, Globe, Sparkles, LogOut, CheckCircle2, ShieldAlert, Library } from 'lucide-react';
+import { Menu, Search, Bookmark, User, Globe, LogOut, Library } from 'lucide-react';
 import { getCurrentUser, logoutUser } from '../services/supabaseClient';
-import { searchMovies } from '../services/tmdbApi';
+import { searchMovies, setTmdbLanguage } from '../services/tmdbApi';
 import { searchGames } from '../services/thegamesdbApi';
 import type { UserAccount, MediaItem } from '../types';
 
@@ -26,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('EN');
 
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +79,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     return () => clearTimeout(timer);
   }, [query, searchCategory]);
+
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLanguage(lang);
+    setTmdbLanguage(lang);
+  };
 
   const handleLogout = () => {
     logoutUser();
@@ -277,7 +283,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             {item.media_type}
                           </span>
                           {year && <span>{year}</span>}
-                          {rating > 0 && <span>★ {rating.toFixed(1)}</span>}
+                          {rating > 0 && <span>Rating: {rating.toFixed(1)}</span>}
                         </div>
                       </div>
                     </div>
@@ -288,7 +294,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Simple AI Assistant Trigger */}
+        {/* AI Assistant Button */}
         <button
           onClick={onOpenAiChat}
           style={{
@@ -300,11 +306,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             fontWeight: 800,
             fontSize: '0.85rem',
             padding: '6px 14px',
-            borderRadius: '20px',
-            boxShadow: '0 0 12px rgba(245, 124, 0, 0.4)'
+            borderRadius: '20px'
           }}
         >
-          <Sparkles size={16} />
           <span>AI Assistant</span>
         </button>
 
@@ -395,17 +399,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div style={{ padding: '8px 12px', borderBottom: '1px solid #2e2e2e', marginBottom: '6px' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>{currentUser.name}</div>
                 <div style={{ fontSize: '0.75rem', color: '#aaa', wordBreak: 'break-all' }}>{currentUser.email}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '0.7rem' }}>
-                  {currentUser.isEmailVerified || currentUser.isGoogleAuth ? (
-                    <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={12} /> Email Verified
-                    </span>
-                  ) : (
-                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ShieldAlert size={12} /> Email Unverified
-                    </span>
-                  )}
-                </div>
               </div>
 
               <button
@@ -433,10 +426,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Language selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, padding: '4px 6px' }}>
+        {/* Multi-Language Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontSize: '0.85rem', fontWeight: 600, padding: '4px 6px' }}>
           <Globe size={16} />
-          <span>EN</span>
+          <select
+            value={selectedLanguage}
+            onChange={(e) => handleLanguageChange(e.target.value)}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="EN" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>EN</option>
+            <option value="ES" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>ES</option>
+            <option value="FR" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>FR</option>
+            <option value="DE" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>DE</option>
+            <option value="JA" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>JA</option>
+            <option value="HI" style={{ backgroundColor: '#1f1f1f', color: '#fff' }}>HI</option>
+          </select>
         </div>
 
       </div>

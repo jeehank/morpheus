@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Plus, Check, Tv, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { fetchMovieDetails, fetchMovieWatchProviders, getTmdbImageUrl } from '../services/tmdbApi';
+import { Star, Plus, Check, Tv, User } from 'lucide-react';
+import { fetchMovieDetails, fetchMovieWatchProviders, fetchMovieCredits, getTmdbImageUrl } from '../services/tmdbApi';
 import { fetchGameDetails } from '../services/thegamesdbApi';
 import { getStoredReviews, addReview, getCurrentUser, updateUserWatchlist, updateContinueWatching } from '../services/supabaseClient';
 import { PlatformLogo } from '../components/PlatformLogos';
-import type { Movie, Game, Review, UserAccount, WatchProvidersResult } from '../types';
+import type { Movie, Game, Review, UserAccount, WatchProvidersResult, CastMember } from '../types';
 
 interface MediaDetailPageProps {
   id: number | string;
@@ -21,6 +21,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 }) => {
   const [mediaItem, setMediaItem] = useState<Movie | Game | null>(null);
   const [providers, setProviders] = useState<WatchProvidersResult | null>(null);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
   const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +40,10 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       if (type === 'movie') {
         const item = await fetchMovieDetails(id);
         const provs = await fetchMovieWatchProviders(id);
+        const creditsData = await fetchMovieCredits(id);
         setMediaItem(item);
         setProviders(provs);
+        setCast(creditsData);
       } else {
         const item = await fetchGameDetails(id);
         setMediaItem(item);
@@ -76,7 +79,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       <div className="container" style={{ padding: '60px 0', textAlign: 'center', color: '#aaa' }}>
         <h2>Media title not found.</h2>
         <button onClick={() => onNavigate('home')} style={{ color: 'var(--brand-orange)', marginTop: '16px', fontWeight: 700 }}>
-          ← Back to Home
+          Back to Home
         </button>
       </div>
     );
@@ -183,7 +186,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Main Visual Banner (Backdrop + Poster) */}
+      {/* Main Visual Banner */}
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '16px', height: '420px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a1a1a', margin: '12px 0 32px 0' }}>
         
         {/* Poster */}
@@ -240,6 +243,37 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             </p>
           </section>
 
+          {/* Cast & Crew Section (TMDB Database Integration) */}
+          {type === 'movie' && cast.length > 0 && (
+            <section style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '16px' }}>
+                Top Cast (TMDB Database)
+              </h2>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '16px' }}>
+                {cast.map((actor) => (
+                  <div key={actor.id} style={{ backgroundColor: '#1f1f1f', border: '1px solid #2e2e2e', borderRadius: '6px', overflow: 'hidden', textAlign: 'center', paddingBottom: '8px' }}>
+                    <div style={{ width: '100%', height: '140px', backgroundColor: '#141414', overflow: 'hidden' }}>
+                      {actor.profile_path ? (
+                        <img src={actor.profile_path} alt={actor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
+                          <User size={36} />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#fff', marginTop: '6px', padding: '0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {actor.name}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#aaa', padding: '0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {actor.character}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Genres & Platforms */}
           <section style={{ marginBottom: '32px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '12px' }}>
@@ -282,35 +316,22 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
               {!currentUser ? (
                 <div style={{ backgroundColor: '#242424', padding: '16px', borderRadius: '6px', textAlign: 'center', color: '#aaa' }}>
                   <p style={{ fontSize: '0.9rem', marginBottom: '12px' }}>
-                    🔒 You must be signed in with a verified email or Google account to post reviews.
+                    You must be signed in to post reviews.
                   </p>
                   <button onClick={onOpenAuth} style={{ backgroundColor: 'var(--brand-orange)', color: '#000', fontWeight: 800, padding: '8px 20px', borderRadius: '4px', fontSize: '0.85rem' }}>
                     Sign In / Register
                   </button>
                 </div>
-              ) : (!currentUser.isEmailVerified && !currentUser.isGoogleAuth) ? (
-                <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#f87171', padding: '14px', borderRadius: '6px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <ShieldAlert size={22} style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <div>
-                    <strong style={{ display: 'block', fontSize: '0.95rem' }}>Email Verification Required</strong>
-                    <span style={{ fontSize: '0.85rem', color: '#fca5a5' }}>
-                      Reviews are restricted to verified accounts. Please enter your 6-digit verification code.
-                    </span>
-                    <button onClick={onOpenAuth} style={{ backgroundColor: '#ef4444', color: '#fff', fontWeight: 700, padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginTop: '10px', display: 'block' }}>
-                      Verify Email Code Now
-                    </button>
-                  </div>
-                </div>
               ) : (
                 <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {reviewError && (
                     <div style={{ color: '#ef4444', fontSize: '0.85rem', backgroundColor: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: '4px' }}>
-                      ⚠️ {reviewError}
+                      {reviewError}
                     </div>
                   )}
                   {reviewSuccess && (
                     <div style={{ color: '#22c55e', fontSize: '0.85rem', backgroundColor: 'rgba(34,197,94,0.1)', padding: '8px', borderRadius: '4px' }}>
-                      ✅ Review submitted successfully!
+                      Review submitted successfully!
                     </div>
                   )}
 
@@ -382,9 +403,6 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{rev.userName}</span>
-                        <span style={{ fontSize: '0.7rem', color: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <CheckCircle2 size={12} /> Verified Reviewer
-                        </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontWeight: 800, fontSize: '0.9rem' }}>
                         <Star size={16} fill="var(--star-yellow)" color="var(--star-yellow)" />
