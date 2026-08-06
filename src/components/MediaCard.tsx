@@ -1,6 +1,6 @@
 import React from 'react';
-import { Star, Plus, Check, Play, Info } from 'lucide-react';
-import { MediaItem, UserAccount } from '../types';
+import { Star, Plus, Check, Play } from 'lucide-react';
+import type { MediaItem, UserAccount } from '../types';
 import { updateUserWatchlist, getCurrentUser } from '../services/supabaseClient';
 
 interface MediaCardProps {
@@ -120,7 +120,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           <span style={{ fontWeight: 700, color: '#fff' }}>
             {rating > 0 ? rating.toFixed(1) : 'N/A'}
           </span>
-          <span style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', marginLeft: 'auto', backgroundColor: isMovie ? '#ff6b00' : '#8b5cf6', padding: '1px 4px', borderRadius: '3px', color: '#fff', fontWeight: 700 }}>
+          <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginLeft: 'auto', backgroundColor: isMovie ? '#ff6b00' : '#8b5cf6', padding: '1px 4px', borderRadius: '3px', color: '#fff', fontWeight: 700 }}>
             {item.media_type}
           </span>
         </div>

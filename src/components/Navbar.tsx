@@ -3,7 +3,7 @@ import { Menu, Search, Bookmark, User, Globe, Sparkles, LogOut, CheckCircle2, Sh
 import { getCurrentUser, logoutUser } from '../services/supabaseClient';
 import { searchMovies } from '../services/tmdbApi';
 import { searchGames } from '../services/thegamesdbApi';
-import { UserAccount, MediaItem } from '../types';
+import type { UserAccount, MediaItem } from '../types';
 
 interface NavbarProps {
   onOpenMenu: () => void;
@@ -17,8 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMenu,
   onOpenAiChat,
   onOpenAuth,
-  onNavigate,
-  activePage
+  onNavigate
 }) => {
   const [searchCategory, setSearchCategory] = useState<'All' | 'Movies' | 'Games'>('All');
   const [query, setQuery] = useState('');
@@ -88,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header style={{ backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-subtle)', sticky: 'top', zIndex: 1000, position: 'sticky', top: 0 }}>
+    <header style={{ backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 1000 }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', height: '56px', gap: '12px' }}>
         
         {/* Brand Logo - IMDb style but Orange */}
@@ -286,11 +285,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Sparkles size={16} />
           <span>AI Recommendations</span>
         </button>
-
-        {/* IGMDBPro Link */}
-        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#00b5ff', cursor: 'pointer', display: 'none', minWidth: 'fit-content' }}>
-          IGMDb<span style={{ color: '#fff' }}>Pro</span>
-        </span>
 
         {/* Watchlist Button */}
         <button
