@@ -15,7 +15,6 @@ export const GamesPage: React.FC<GamesPageProps> = ({
   onOpenAuth
 }) => {
   const [games, setGames] = useState<Game[]>([]);
-  const [activePlatform, setActivePlatform] = useState<string>('All');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -33,11 +32,7 @@ export const GamesPage: React.FC<GamesPageProps> = ({
     loadData();
   }, []);
 
-  const filteredGames = activePlatform === 'All'
-    ? games
-    : games.filter(g => g.platforms?.some((plat: any) => 
-        (typeof plat === 'string' ? plat : plat.name).toLowerCase().includes(activePlatform.toLowerCase())
-      ));
+  const displayedGames = games;
 
   return (
     <div className="container" style={{ paddingBottom: '60px' }}>
@@ -73,12 +68,12 @@ export const GamesPage: React.FC<GamesPageProps> = ({
             <div className="section-heading">
               <div className="section-title">
                 <Flame color="var(--brand-orange)" size={24} />
-                <span>Popular & Trending Games ({activePlatform})</span>
+                <span>Popular & Trending Games</span>
               </div>
               <div className="section-subtitle">Ranked by IGDB player votes & total rating count</div>
             </div>
             <div className="media-scroll-row">
-              {filteredGames.slice(0, 15).map(g => (
+              {games.slice(0, 15).map(g => (
                 <MediaCard key={g.id} item={g} onNavigate={onNavigate} onOpenAuth={onOpenAuth} />
               ))}
             </div>
