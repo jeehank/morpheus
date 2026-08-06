@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Globe, AlertTriangle } from 'lucide-react';
-import { getClientIp, registerUser, loginUser, registerWithGoogle } from '../services/supabaseClient';
+import { X, Mail, Lock, User, Globe, AlertTriangle, CheckCircle, Send } from 'lucide-react';
+import {
+  getClientIp,
+  registerWithEmailPassword,
+  loginWithEmailPassword,
+  loginWithGooglePopup,
+  resendVerificationEmail
+} from '../services/firebaseClient';
 import type { UserAccount } from '../types';
 
 interface AuthModalProps {
@@ -14,19 +20,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const [mode, setMode] = useState<'signin' | 'register' | 'google'>('signin');
+  const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [googleEmailCustom, setGoogleEmailCustom] = useState('');
   const [clientIp, setClientIp] = useState<string>('Detecting IP...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState<UserAccount | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       getClientIp().then(ip => setClientIp(ip));
       setErrorMsg(null);
+      setInfoMsg(null);
     }
   }, [isOpen]);
 
@@ -41,8 +49,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setIsLoading(true);
     setErrorMsg(null);
+    setInfoMsg(null);
 
-    const res = await registerUser(emailOrUsername, password, name);
+    const res = await registerWithEmailPassword(emailOrUsername, password, name);
     setIsLoading(false);
 
     if (!res.success) {
@@ -51,6 +60,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (res.user) {
+      if (!res.user.isEmailVerified) {
+        setUnverifiedUser(res.user);
+        setInfoMsg(`Account created! A verification link has been sent to ${res.user.email}. Please verify your email.`);
+      }
       onSuccess(res.user);
       onClose();
     }
@@ -65,8 +78,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setIsLoading(true);
     setErrorMsg(null);
+    setInfoMsg(null);
 
-    const res = await loginUser(emailOrUsername, password);
+    const res = await loginWithEmailPassword(emailOrUsername, password);
     setIsLoading(false);
 
     if (!res.success) {
@@ -75,16 +89,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (res.user) {
+      if (!res.user.isEmailVerified && !res.user.isGoogleAuth) {
+        setUnverifiedUser(res.user);
+        setInfoMsg('Your email address is not verified yet. Please check your inbox or resend the verification link.');
+      }
       onSuccess(res.user);
       onClose();
     }
   };
 
-  const handleSelectGoogleAccount = async (accountEmail: string) => {
+  const handleGoogleSignInPopup = async () => {
     setIsLoading(true);
     setErrorMsg(null);
+    setInfoMsg(null);
 
-    const res = await registerWithGoogle(accountEmail);
+    const res = await loginWithGooglePopup();
     setIsLoading(false);
 
     if (!res.success) {
@@ -98,24 +117,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleCustomGoogleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmailCustom.trim() || !googleEmailCustom.includes('@')) {
-      setErrorMsg('Please enter a valid Google email address.');
-      return;
+  const handleResendVerification = async () => {
+    setInfoMsg(null);
+    const res = await resendVerificationEmail();
+    if (res.success) {
+      setInfoMsg('Verification email resent! Please check your inbox.');
+    } else {
+      setErrorMsg(res.error || 'Failed to resend verification email.');
     }
-    await handleSelectGoogleAccount(googleEmailCustom);
   };
-
-  // Pre-configured accounts matching Google account selector screen
-  const sampleGoogleAccounts = [
-    { name: 'Jeehank', email: 'sreerupa.karanjai@gmail.com' },
-    { name: 'Anoshu Polticoal', email: 'anoshupolticoal34@gmail.com' },
-    { name: 'X-Celsior sxcs', email: 'xcelsior.sxcs@gmail.com' },
-    { name: 'SXCS X-Uberance', email: 'info@sxcs-xuberance.com' },
-    { name: 'nehu didi', email: 'nehudidi15@gmail.com' },
-    { name: 'SXCS X-Uberance Tech', email: 'tech@sxcs-xuberance.com' }
-  ];
 
   return (
     <div style={{
@@ -154,7 +164,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               IGMDb
             </div>
             <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff' }}>
-              {mode === 'signin' ? 'Sign In to IGMDb' : mode === 'register' ? 'Create Account' : 'Sign in with Google'}
+              {mode === 'signin' ? 'Sign In to IGMDb' : 'Create Account'}
             </span>
           </div>
 
@@ -178,7 +188,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <Globe size={13} color="var(--brand-orange)" />
             Your IP: <strong style={{ color: '#fff' }}>{clientIp}</strong>
           </span>
-          <span style={{ color: 'var(--brand-orange)', fontWeight: 700 }}>IGMDb Verified</span>
+          <span style={{ color: 'var(--brand-orange)', fontWeight: 700 }}>Firebase Verified</span>
         </div>
 
         <div style={{ padding: '24px' }}>
@@ -202,7 +212,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {mode === 'signin' && (
+          {/* Info Banner / Email Verification Prompt */}
+          {infoMsg && (
+            <div style={{
+              backgroundColor: 'rgba(34, 197, 94, 0.15)',
+              border: '1px solid rgba(34, 197, 94, 0.4)',
+              color: '#4ade80',
+              padding: '10px 12px',
+              borderRadius: '6px',
+              fontSize: '0.82rem',
+              marginBottom: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <CheckCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>{infoMsg}</div>
+              </div>
+              {unverifiedUser && (
+                <button
+                  onClick={handleResendVerification}
+                  style={{
+                    backgroundColor: '#16a34a',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    alignSelf: 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Send size={13} />
+                  Resend Verification Email
+                </button>
+              )}
+            </div>
+          )}
+
+          {mode === 'signin' ? (
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', display: 'block', marginBottom: '6px' }}>
@@ -280,10 +331,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </span>
               </div>
 
-              {/* Google Login Trigger */}
+              {/* Google Popup Sign In */}
               <button
                 type="button"
-                onClick={() => setMode('google')}
+                onClick={handleGoogleSignInPopup}
+                disabled={isLoading}
                 style={{
                   width: '100%',
                   backgroundColor: '#ffffff',
@@ -319,9 +371,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </div>
             </form>
-          )}
-
-          {mode === 'register' && (
+          ) : (
             <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', display: 'block', marginBottom: '6px' }}>
@@ -429,99 +479,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </div>
             </form>
-          )}
-
-          {/* Mode: Google Account Selector (Matches screenshot layout) */}
-          {mode === 'google' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ textAlign: 'center', paddingBottom: '10px', borderBottom: '1px solid #2e2e2e' }}>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>Choose an account</div>
-                <div style={{ fontSize: '0.85rem', color: '#aaa' }}>to continue to <strong style={{ color: '#5799ef' }}>IGMDb</strong></div>
-              </div>
-
-              {/* Sample Google Accounts List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {sampleGoogleAccounts.map((acc) => (
-                  <button
-                    key={acc.email}
-                    onClick={() => handleSelectGoogleAccount(acc.email)}
-                    disabled={isLoading}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 14px',
-                      borderRadius: '8px',
-                      textAlign: 'left',
-                      backgroundColor: '#121212',
-                      border: '1px solid #2e2e2e',
-                      transition: 'background 0.15s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#242424'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#121212'}
-                  >
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--brand-orange)',
-                      color: '#000',
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.85rem'
-                    }}>
-                      {acc.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{acc.name}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#aaa' }}>{acc.email}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Google Email Form */}
-              <form onSubmit={handleCustomGoogleSubmit} style={{ borderTop: '1px solid #2e2e2e', paddingTop: '14px', marginTop: '4px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', display: 'block', marginBottom: '6px' }}>
-                  Or enter another Google Email
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="email"
-                    placeholder="user@gmail.com"
-                    value={googleEmailCustom}
-                    onChange={(e) => setGoogleEmailCustom(e.target.value)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#121212',
-                      border: '1px solid #333',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      color: '#fff',
-                      fontSize: '0.85rem',
-                      outline: 'none'
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    style={{ backgroundColor: '#4285F4', color: '#fff', fontWeight: 700, padding: '8px 16px', borderRadius: '6px', fontSize: '0.85rem' }}
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </form>
-
-              <button
-                type="button"
-                onClick={() => setMode('signin')}
-                style={{ color: '#aaa', fontSize: '0.82rem', marginTop: '8px', textAlign: 'center' }}
-              >
-                ← Back to standard Sign In
-              </button>
-            </div>
           )}
 
         </div>

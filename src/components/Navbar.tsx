@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, Search, Bookmark, User, Globe, LogOut, Library } from 'lucide-react';
-import { getCurrentUser, logoutUser } from '../services/supabaseClient';
+import { getCurrentUser, logoutUser } from '../services/firebaseClient';
 import { searchMovies, setTmdbLanguage } from '../services/tmdbApi';
 import { searchGames } from '../services/thegamesdbApi';
 import type { UserAccount, MediaItem } from '../types';

@@ -11,7 +11,7 @@ import {
   toggleReviewSpoiler,
   deleteReview,
   reportReview
-} from '../services/supabaseClient';
+} from '../services/firebaseClient';
 import { TrailerModal } from '../components/TrailerModal';
 import { PlatformLogo } from '../components/PlatformLogos';
 import type { Movie, Game, Review, UserAccount, WatchProvidersResult, CastMember } from '../types';
