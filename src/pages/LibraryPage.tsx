@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Film, Gamepad2, Search, Filter, Loader2 } from 'lucide-react';
-import { fetchTrendingMovies, fetchTopRatedMovies, fetchNowPlayingMovies, fetchUpcomingMovies } from '../services/tmdbApi';
+import { fetchTop250MoviesFull } from '../services/tmdbApi';
 import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
 import { MediaCard } from '../components/MediaCard';
 import type { Movie, Game } from '../types';
@@ -23,24 +23,15 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function loadFullLibrary() {
+    async function loadFull150Library() {
       setIsLoading(true);
       try {
-        const [tr, top, np, up, games] = await Promise.all([
-          fetchTrendingMovies(),
-          fetchTopRatedMovies(),
-          fetchNowPlayingMovies(),
-          fetchUpcomingMovies(),
+        const [movies, games] = await Promise.all([
+          fetchTop250MoviesFull(),
           fetchGamesFromIGDB()
         ]);
 
-        // Combine into 80+ unique movies
-        const seenMovies = new Map<number, Movie>();
-        [...tr, ...top, ...np, ...up].forEach(m => {
-          if (!seenMovies.has(m.id)) seenMovies.set(m.id, m);
-        });
-
-        setAllMovies(Array.from(seenMovies.values()));
+        setAllMovies(movies.slice(0, 150));
         setAllGames(games);
       } catch (err) {
         console.error('Error loading library:', err);
@@ -49,7 +40,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       }
     }
 
-    loadFullLibrary();
+    loadFull150Library();
   }, []);
 
   const genresList = [
@@ -81,15 +72,15 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '2rem', fontWeight: 900, color: '#fff' }}>
             <span style={{ backgroundColor: 'var(--brand-orange)', color: '#000', padding: '4px 12px', borderRadius: '6px' }}>LIBRARY</span>
-            <span>All Movies & Games Collection</span>
+            <span>All Movies & Games Collection (150+ Items)</span>
           </div>
           <p style={{ color: '#aaa', fontSize: '0.9rem', marginTop: '6px' }}>
-            Browse over 80+ curated titles at once with real-time genre filtering and search.
+            Browse over 150+ movies and video games at once with real-time genre filtering and instant search.
           </p>
         </div>
       </div>
 
-      {/* Main Tab Bar: Movies vs Games */}
+      {/* Main Tab Bar: Movies (150+) vs Games (150+) */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
         <button
           onClick={() => { setActiveTab('movies'); setSelectedGenre('All'); }}
@@ -110,7 +101,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           }}
         >
           <Film size={22} />
-          <span>All Movies Library ({allMovies.length})</span>
+          <span>All Movies Library ({allMovies.length} Titles)</span>
         </button>
 
         <button
@@ -132,7 +123,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           }}
         >
           <Gamepad2 size={22} />
-          <span>All Video Games Library ({allGames.length})</span>
+          <span>All Video Games Library ({allGames.length} Titles)</span>
         </button>
       </div>
 
@@ -163,7 +154,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         {/* Genre Pill Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
           <Filter size={18} color="var(--brand-orange)" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: '0.82rem', color: '#aaa', fontWeight: 700, flexShrink: 0 }}>Genres:</span>
+          <span style={{ fontSize: '0.82rem', color: '#aaa', fontWeight: 700, flexShrink: 0 }}>Filter by Genre:</span>
           {genresList.map((genre) => (
             <button
               key={genre}
@@ -191,7 +182,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       {isLoading ? (
         <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <Loader2 size={40} className="animate-spin" />
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Loading 80+ {activeTab} collection...</h3>
+          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Loading 150+ {activeTab} titles...</h3>
         </div>
       ) : filteredItems.length === 0 ? (
         <div style={{ padding: '60px 0', textAlign: 'center', color: '#aaa', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
@@ -206,7 +197,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         }}>
           {filteredItems.map((item) => (
             <MediaCard
-              key={`lib_${item.media_type}_${item.id}`}
+              key={`lib150_${item.media_type}_${item.id}`}
               item={item}
               onNavigate={onNavigate}
               onOpenAuth={onOpenAuth}
