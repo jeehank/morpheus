@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Flame, Star, Award, Calendar, ChevronRight } from 'lucide-react';
+import { Film, Flame, Star, Calendar } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
 import { fetchTrendingMovies, fetchTopRatedMovies, fetchNowPlayingMovies, fetchUpcomingMovies } from '../services/tmdbApi';
-import { Movie } from '../types';
+import type { Movie } from '../types';
 
 interface MoviesPageProps {
   onNavigate: (page: string, params?: any) => void;

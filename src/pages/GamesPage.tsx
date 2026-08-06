@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Flame, Star, Monitor, Cpu, Sparkles, ChevronRight } from 'lucide-react';
+import { Gamepad2, Flame, Star } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
 import { fetchPopularGames, fetchTrendingGames, fetchUpcomingGames } from '../services/thegamesdbApi';
-import { Game } from '../types';
+import type { Game } from '../types';
 
 interface GamesPageProps {
   onNavigate: (page: string, params?: any) => void;
