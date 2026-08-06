@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Plus, Check, Play } from 'lucide-react';
+import { Star, Plus, Check } from 'lucide-react';
 import type { MediaItem, UserAccount } from '../types';
 import { updateUserWatchlist, getCurrentUser } from '../services/supabaseClient';
 
@@ -7,14 +7,12 @@ interface MediaCardProps {
   item: MediaItem;
   onNavigate: (page: string, params?: any) => void;
   onOpenAuth?: () => void;
-  onOpenTrailer?: (title: string, videoKey?: string) => void;
 }
 
 export const MediaCard: React.FC<MediaCardProps> = ({
   item,
   onNavigate,
-  onOpenAuth,
-  onOpenTrailer
+  onOpenAuth
 }) => {
   const [currentUser, setCurrentUser] = React.useState<UserAccount | null>(getCurrentUser());
 
@@ -169,33 +167,6 @@ export const MediaCard: React.FC<MediaCardProps> = ({
               <Plus size={14} /> Watchlist
             </>
           )}
-        </button>
-
-        {/* Trailer / Details Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onOpenTrailer) {
-              onOpenTrailer(title);
-            } else {
-              onNavigate('detail', { id: item.id, type: item.media_type });
-            }
-          }}
-          style={{
-            width: '100%',
-            color: '#aaa',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            padding: '2px 0'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-          onMouseLeave={(e) => e.currentTarget.style.color = '#aaa'}
-        >
-          <Play size={12} fill="currentColor" /> Trailer
         </button>
 
       </div>
