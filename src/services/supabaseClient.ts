@@ -288,6 +288,42 @@ export function logoutUser(): void {
   setCurrentUser(null);
 }
 
+// Resend Supabase email verification (OTP magic link)
+export async function resendVerificationEmail(): Promise<{ success: boolean; error?: string }> {
+  const user = getCurrentUser();
+  if (!user) return { success: false, error: 'Not signed in.' };
+
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: user.email
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to send verification email.' };
+  }
+}
+
+// Check if user's email has been confirmed in Supabase Auth
+export async function refreshVerificationStatus(): Promise<boolean> {
+  try {
+    const { data } = await supabase.auth.getUser();
+    if (data.user?.email_confirmed_at) {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        currentUser.isEmailVerified = true;
+        setCurrentUser(currentUser);
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // 3. Create Moderator Account (Admin Only)
 export async function createModeratorAccount(
   emailInput: string,

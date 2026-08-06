@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bookmark, ListPlus, Play, CheckCircle2, ShieldAlert, Globe, Trash2, Plus } from 'lucide-react';
-import { getCurrentUser, updateUserWatchlist, saveStoredAccounts, getStoredAccounts, setCurrentUser } from '../services/supabaseClient';
+import { User, Bookmark, ListPlus, Play, CheckCircle2, ShieldAlert, Globe, Trash2, Plus, Mail, RefreshCw } from 'lucide-react';
+import { getCurrentUser, updateUserWatchlist, saveStoredAccounts, getStoredAccounts, setCurrentUser, resendVerificationEmail, refreshVerificationStatus } from '../services/supabaseClient';
 import type { UserAccount } from '../types';
 
 interface AccountCenterProps {
@@ -148,6 +148,14 @@ export const AccountCenter: React.FC<AccountCenterProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Email Verification Section */}
+      {!currentUser.isEmailVerified && !currentUser.isGoogleAuth && (
+        <EmailVerificationPanel
+          currentUser={currentUser}
+          onStatusUpdate={(updated) => setAccountUser(updated)}
+        />
+      )}
 
       {/* Account Navigation Tabs */}
       <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #2e2e2e', paddingBottom: '12px', marginBottom: '24px' }}>
@@ -357,6 +365,127 @@ export const AccountCenter: React.FC<AccountCenterProps> = ({
         </div>
       )}
 
+    </div>
+  );
+};
+
+// Email Verification Panel Component
+const EmailVerificationPanel: React.FC<{
+  currentUser: UserAccount;
+  onStatusUpdate: (user: UserAccount) => void;
+}> = ({ currentUser, onStatusUpdate }) => {
+  const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [msgType, setMsgType] = useState<'success' | 'error'>('success');
+
+  const handleSendVerification = async () => {
+    setSending(true);
+    setMessage(null);
+    const res = await resendVerificationEmail();
+    setSending(false);
+    if (res.success) {
+      setMsgType('success');
+      setMessage(`Verification email sent to ${currentUser.email}. Please check your inbox (and spam folder).`);
+    } else {
+      setMsgType('error');
+      setMessage(res.error || 'Failed to send verification email.');
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    setChecking(true);
+    setMessage(null);
+    const verified = await refreshVerificationStatus();
+    setChecking(false);
+    if (verified) {
+      setMsgType('success');
+      setMessage('Email verified successfully! Your account is now fully verified.');
+      const updated = getCurrentUser();
+      if (updated) onStatusUpdate(updated);
+    } else {
+      setMsgType('error');
+      setMessage('Email not yet verified. Please click the link in the verification email first, then check again.');
+    }
+  };
+
+  return (
+    <div style={{
+      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+      border: '1px solid rgba(239, 68, 68, 0.25)',
+      borderRadius: '10px',
+      padding: '20px',
+      marginBottom: '24px'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+        <ShieldAlert size={22} color="#ef4444" />
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+          Email Verification Required
+        </h3>
+      </div>
+
+      <p style={{ fontSize: '0.88rem', color: '#ccc', lineHeight: 1.5, marginBottom: '16px' }}>
+        Your email <strong style={{ color: '#fff' }}>{currentUser.email}</strong> has not been verified yet.
+        Verified accounts display a <span style={{ color: '#22c55e' }}>✓ Verified</span> badge next to their
+        name on reviews. Click below to send a verification link to your inbox.
+      </p>
+
+      {message && (
+        <div style={{
+          backgroundColor: msgType === 'success' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+          border: `1px solid ${msgType === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          color: msgType === 'success' ? '#4ade80' : '#f87171',
+          padding: '10px 12px',
+          borderRadius: '6px',
+          fontSize: '0.82rem',
+          marginBottom: '14px'
+        }}>
+          {message}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button
+          onClick={handleSendVerification}
+          disabled={sending}
+          style={{
+            backgroundColor: '#ef4444',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            padding: '10px 18px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            opacity: sending ? 0.6 : 1
+          }}
+        >
+          <Mail size={16} />
+          {sending ? 'Sending...' : 'Send Verification Email'}
+        </button>
+
+        <button
+          onClick={handleCheckStatus}
+          disabled={checking}
+          style={{
+            backgroundColor: '#333',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            padding: '10px 18px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            border: '1px solid #555',
+            opacity: checking ? 0.6 : 1
+          }}
+        >
+          <RefreshCw size={16} />
+          {checking ? 'Checking...' : 'Check Verification Status'}
+        </button>
+      </div>
     </div>
   );
 };
