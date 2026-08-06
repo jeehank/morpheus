@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Play, Plus, Check, Tv, Users, MessageSquare, ShieldAlert, CheckCircle2, Award, Calendar, Share2, Globe } from 'lucide-react';
+import { Star, Play, Plus, Check, Tv, ShieldAlert, CheckCircle2, Globe } from 'lucide-react';
 import { fetchMovieDetails, fetchMovieWatchProviders, getTmdbImageUrl } from '../services/tmdbApi';
 import { fetchGameDetails } from '../services/thegamesdbApi';
 import { getStoredReviews, addReview, getCurrentUser, updateUserWatchlist, updateContinueWatching } from '../services/supabaseClient';
-import { Movie, Game, Review, UserAccount, WatchProvidersResult } from '../types';
+import type { Movie, Game, Review, UserAccount, WatchProvidersResult } from '../types';
 
 interface MediaDetailPageProps {
   id: number | string;
@@ -52,13 +52,12 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       setReviews(filtered);
       setIsLoading(false);
 
-      // Track Continue Watching
       if (mediaItem) {
-        const title = 'title' in mediaItem ? mediaItem.title : mediaItem.name;
-        const poster = type === 'movie'
+        const titleStr = 'title' in mediaItem ? mediaItem.title : mediaItem.name;
+        const posterStr = type === 'movie'
           ? (mediaItem.poster_path ? `https://image.tmdb.org/t/p/w500${mediaItem.poster_path}` : '')
           : ((mediaItem as Game).cover_url || '');
-        updateContinueWatching({ id, mediaType: type, title, poster });
+        updateContinueWatching({ id, mediaType: type, title: titleStr, poster: posterStr });
       }
     }
 
@@ -87,7 +86,6 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   const title = 'title' in mediaItem ? mediaItem.title : mediaItem.name;
   const overview = mediaItem.overview || (mediaItem as Game).summary || 'No description available.';
   const rating = mediaItem.vote_average || (mediaItem as Game).rating || 8.5;
-  const voteCount = mediaItem.vote_count || (mediaItem as Game).rating_count || 1200;
   const releaseDate = mediaItem.release_date || (mediaItem as Game).released || 'N/A';
   
   const backdropUrl = type === 'movie'
