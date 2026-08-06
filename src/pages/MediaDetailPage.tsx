@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Play, Plus, Check, Tv, ShieldAlert, CheckCircle2, Globe } from 'lucide-react';
+import { Star, Plus, Check, Tv, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { fetchMovieDetails, fetchMovieWatchProviders, getTmdbImageUrl } from '../services/tmdbApi';
 import { fetchGameDetails } from '../services/thegamesdbApi';
 import { getStoredReviews, addReview, getCurrentUser, updateUserWatchlist, updateContinueWatching } from '../services/supabaseClient';
+import { PlatformLogo } from '../components/PlatformLogos';
 import type { Movie, Game, Review, UserAccount, WatchProvidersResult } from '../types';
 
 interface MediaDetailPageProps {
@@ -10,15 +11,13 @@ interface MediaDetailPageProps {
   type: 'movie' | 'game';
   onNavigate: (page: string, params?: any) => void;
   onOpenAuth: () => void;
-  onOpenTrailer: (title: string, videoKey?: string) => void;
 }
 
 export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   id,
   type,
   onNavigate,
-  onOpenAuth,
-  onOpenTrailer
+  onOpenAuth
 }) => {
   const [mediaItem, setMediaItem] = useState<Movie | Game | null>(null);
   const [providers, setProviders] = useState<WatchProvidersResult | null>(null);
@@ -184,7 +183,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Main Visual Banner (Backdrop + Poster + Trailer button) */}
+      {/* Main Visual Banner (Backdrop + Poster) */}
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '16px', height: '420px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a1a1a', margin: '12px 0 32px 0' }}>
         
         {/* Poster */}
@@ -192,7 +191,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
           <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        {/* Backdrop Video Hero */}
+        {/* Backdrop Hero */}
         <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#000' }}>
           <img src={backdropUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.65 }} />
           
@@ -201,29 +200,6 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             inset: 0,
             background: 'linear-gradient(to top, rgba(18,18,18,0.9), transparent 60%)'
           }} />
-
-          {/* Play Trailer Overlay Button */}
-          <button
-            onClick={() => onOpenTrailer(title)}
-            style={{
-              position: 'absolute',
-              bottom: '24px',
-              left: '24px',
-              backgroundColor: 'var(--brand-orange)',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: '1rem',
-              padding: '12px 24px',
-              borderRadius: '30px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              boxShadow: '0 4px 20px rgba(245, 124, 0, 0.5)'
-            }}
-          >
-            <Play size={20} fill="#000" />
-            <span>Watch Official Trailer</span>
-          </button>
 
           <button
             onClick={handleToggleWatchlist}
@@ -236,7 +212,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
               border: '1px solid var(--brand-orange)',
               fontWeight: 700,
               fontSize: '0.9rem',
-              padding: '12px 20px',
+              padding: '12px 24px',
               borderRadius: '30px',
               display: 'flex',
               alignItems: 'center',
@@ -264,10 +240,10 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             </p>
           </section>
 
-          {/* Cast & Crew / Developers */}
+          {/* Genres & Platforms */}
           <section style={{ marginBottom: '32px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '12px' }}>
-              {type === 'movie' ? 'Top Cast & Crew' : 'Platforms & Developers'}
+              {type === 'movie' ? 'Genres & Details' : 'Platforms'}
             </h2>
             
             {type === 'movie' && (mediaItem as Movie).genres ? (
@@ -293,7 +269,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
           <section id="review-section" style={{ marginBottom: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px' }}>
-                User Reviews & Ratings ({reviews.length})
+                User Reviews ({reviews.length})
               </h2>
             </div>
 
@@ -318,7 +294,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                   <div>
                     <strong style={{ display: 'block', fontSize: '0.95rem' }}>Email Verification Required</strong>
                     <span style={{ fontSize: '0.85rem', color: '#fca5a5' }}>
-                      Reviews are restricted to accounts with verified email addresses or Google SSO to prevent spam. Please enter your 6-digit verification code.
+                      Reviews are restricted to verified accounts. Please enter your 6-digit verification code.
                     </span>
                     <button onClick={onOpenAuth} style={{ backgroundColor: '#ef4444', color: '#fff', fontWeight: 700, padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginTop: '10px', display: 'block' }}>
                       Verify Email Code Now
@@ -432,7 +408,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 
         </div>
 
-        {/* Right Sidebar: Streaming & Platform Availability */}
+        {/* Right Sidebar: Streaming & Platform Logos */}
         <div>
           <div style={{ backgroundColor: '#1f1f1f', border: '1px solid #2e2e2e', borderRadius: '8px', padding: '20px', position: 'sticky', top: '76px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>
@@ -448,18 +424,12 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {(providers?.flatrate || providers?.rent || [
-                    { provider_id: 1, provider_name: 'Netflix', logo_path: '/pbpST2wM2vKbxy18mYj8jC3w2Lw.jpg' },
-                    { provider_id: 2, provider_name: 'Amazon Prime Video', logo_path: '/dQeA35BByeaBBRwhfY2yudtz3ne.jpg' },
-                    { provider_id: 3, provider_name: 'Disney+', logo_path: '/7rwE2KG48GWB2X4zD38d2G6h7Xl.jpg' }
-                  ]).slice(0, 4).map((p: any) => (
-                    <div key={p.provider_id || p.provider_name} style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#141414', padding: '8px 12px', borderRadius: '6px', border: '1px solid #2e2e2e' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '6px', backgroundColor: '#ff6b00', color: '#fff', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
-                        {p.provider_name.charAt(0)}
-                      </div>
-                      <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#fff' }}>{p.provider_name}</span>
-                      <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#22c55e', fontWeight: 700, backgroundColor: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                        Stream HD
-                      </span>
+                    { provider_name: 'Netflix' },
+                    { provider_name: 'Prime Video' },
+                    { provider_name: 'Disney+' }
+                  ]).slice(0, 4).map((p: any, idx) => (
+                    <div key={idx} style={{ backgroundColor: '#141414', padding: '10px 14px', borderRadius: '6px', border: '1px solid #2e2e2e' }}>
+                      <PlatformLogo platformName={p.provider_name || 'Netflix'} />
                     </div>
                   ))}
                 </div>
@@ -471,10 +441,9 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['Steam (PC)', 'PlayStation Store (PS5)', 'Xbox Games Store', 'Nintendo eShop'].map((store) => (
-                    <div key={store} style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#141414', padding: '8px 12px', borderRadius: '6px', border: '1px solid #2e2e2e' }}>
-                      <Globe size={18} color="var(--brand-orange)" />
-                      <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#fff' }}>{store}</span>
+                  {['Steam', 'PlayStation', 'Xbox'].map((store) => (
+                    <div key={store} style={{ backgroundColor: '#141414', padding: '10px 14px', borderRadius: '6px', border: '1px solid #2e2e2e' }}>
+                      <PlatformLogo platformName={store} />
                     </div>
                   ))}
                 </div>
