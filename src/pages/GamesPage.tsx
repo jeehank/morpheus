@@ -49,30 +49,8 @@ export const GamesPage: React.FC<GamesPageProps> = ({
             IGDB
           </div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff' }}>
-            Video Game Hub (IGDB Proxy Data)
+            Video Game Hub
           </h1>
-        </div>
-
-        {/* Platform Pill Filters */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['All', 'PC', 'PlayStation', 'Xbox', 'Switch'].map(plat => (
-            <button
-              key={plat}
-              onClick={() => setActivePlatform(plat)}
-              style={{
-                backgroundColor: activePlatform === plat ? 'var(--brand-orange)' : '#1f1f1f',
-                color: activePlatform === plat ? '#000' : '#ccc',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                padding: '6px 14px',
-                borderRadius: '20px',
-                border: '1px solid #333',
-                transition: 'all 0.2s'
-              }}
-            >
-              {plat}
-            </button>
-          ))}
         </div>
       </div>
 

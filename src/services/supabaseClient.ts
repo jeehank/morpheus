@@ -113,6 +113,8 @@ export async function registerUser(
 
     const isVerified = authData.user?.email_confirmed_at ? true : false;
 
+    const dbWatchlist = await fetchUserWatchlist(userId);
+
     const userAccount: UserAccount = {
       id: userId,
       email,
@@ -123,7 +125,7 @@ export async function registerUser(
       isGoogleAuth: false,
       ipAddress: currentIp,
       createdAt: new Date().toISOString(),
-      watchlist: [],
+      watchlist: dbWatchlist,
       playlists: [],
       continueWatching: []
     };
@@ -229,6 +231,8 @@ export async function loginUser(
         return { success: false, error: 'Your account has been banned by an administrator.' };
       }
 
+      const dbWatchlist = await fetchUserWatchlist(profileMatch.id);
+
       const unverifiedUser: UserAccount = {
         id: profileMatch.id,
         email: profileMatch.email,
@@ -239,7 +243,7 @@ export async function loginUser(
         isGoogleAuth: false,
         ipAddress: currentIp,
         createdAt: profileMatch.created_at || new Date().toISOString(),
-        watchlist: [],
+        watchlist: dbWatchlist,
         playlists: [],
         continueWatching: []
       };
@@ -261,6 +265,8 @@ export async function loginUser(
       return { success: false, error: 'Your account has been banned by an administrator.' };
     }
 
+    const dbWatchlist = await fetchUserWatchlist(userId);
+
     const userAccount: UserAccount = {
       id: userId,
       email: authData.user.email || emailToUse,
@@ -271,7 +277,7 @@ export async function loginUser(
       isGoogleAuth: false,
       ipAddress: currentIp,
       createdAt: authData.user.created_at,
-      watchlist: [],
+      watchlist: dbWatchlist,
       playlists: [],
       continueWatching: []
     };
@@ -616,6 +622,27 @@ export function saveStoredReviews(reviews: Review[]): void {
   localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
 }
 
+export async function fetchUserWatchlist(userId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('watchlists')
+      .select('*')
+      .eq('user_id', String(userId))
+      .order('added_at', { ascending: false });
+
+    if (error || !data) return [];
+    return data.map(item => ({
+      id: item.media_id,
+      mediaType: item.media_type as 'movie' | 'game',
+      title: item.title,
+      poster: item.poster || '',
+      addedAt: item.added_at
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export function updateUserWatchlist(mediaItem: { id: number | string; mediaType: 'movie' | 'game'; title: string; poster: string }): UserAccount | null {
   const user = getCurrentUser();
   if (!user) return null;
@@ -625,8 +652,30 @@ export function updateUserWatchlist(mediaItem: { id: number | string; mediaType:
   let newWatchlist = [...user.watchlist];
   if (exists) {
     newWatchlist = newWatchlist.filter(item => !(String(item.id) === String(mediaItem.id) && item.mediaType === mediaItem.mediaType));
+    // Remove from Supabase watchlists table
+    supabase
+      .from('watchlists')
+      .delete()
+      .eq('user_id', String(user.id))
+      .eq('media_id', String(mediaItem.id))
+      .eq('media_type', mediaItem.mediaType)
+      .then(() => {});
   } else {
-    newWatchlist.unshift({ ...mediaItem, addedAt: new Date().toISOString() });
+    const newEntry = { ...mediaItem, addedAt: new Date().toISOString() };
+    newWatchlist.unshift(newEntry);
+    // Insert into Supabase watchlists table
+    supabase
+      .from('watchlists')
+      .insert({
+        id: 'wl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        user_id: String(user.id),
+        media_id: String(mediaItem.id),
+        media_type: mediaItem.mediaType,
+        title: mediaItem.title,
+        poster: mediaItem.poster,
+        added_at: newEntry.addedAt
+      })
+      .then(() => {});
   }
 
   const updatedUser = { ...user, watchlist: newWatchlist };

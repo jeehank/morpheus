@@ -28,11 +28,26 @@ export function gameMatchesGenre(game: Game, genreName: string): boolean {
   if (!genreName || genreName.toLowerCase() === 'all') return true;
   const target = genreName.toLowerCase();
 
-  const gameGenres = game.genres || [];
-  return gameGenres.some((g: any) => {
-    const gName = typeof g === 'object' ? g.name : String(g);
-    return gName.toLowerCase().includes(target);
-  });
+  const gameGenres: string[] = (game.genres || []).map((g: any) =>
+    (typeof g === 'object' ? g.name : String(g)).toLowerCase()
+  );
+
+  if (gameGenres.length === 0) return true;
+
+  if (target === 'rpg') {
+    return gameGenres.some(g => g.includes('rpg') || g.includes('role-playing') || g.includes('tactical'));
+  }
+  if (target === 'action') {
+    return gameGenres.some(g => g.includes('action') || g.includes('shooter') || g.includes('fighting') || g.includes('hack and slash') || g.includes('arcade'));
+  }
+  if (target === 'sci-fi') {
+    return gameGenres.some(g => g.includes('sci-fi') || g.includes('science fiction') || g.includes('futuristic') || g.includes('space') || g.includes('cyberpunk'));
+  }
+  if (target === 'animation') {
+    return gameGenres.some(g => g.includes('anime') || g.includes('animation') || g.includes('cartoon') || g.includes('indie'));
+  }
+
+  return gameGenres.some(g => g.includes(target));
 }
 
 export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = true): Promise<Game[]> {
