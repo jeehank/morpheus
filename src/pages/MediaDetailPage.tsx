@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Plus, Check, Tv, User, Play, Eye, EyeOff, MoreVertical, Flag, Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { Star, Plus, Check, Tv, User, Play, Eye, EyeOff, MoreVertical, Flag, Trash2, AlertTriangle } from 'lucide-react';
 import { fetchMovieDetails, fetchMovieWatchProviders, fetchMovieCredits, fetchMovieTrailerKey, getTmdbImageUrl } from '../services/tmdbApi';
 import { fetchGameDetails } from '../services/thegamesdbApi';
 import {

@@ -70,8 +70,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(245, 124, 0, 0.15)'
+          cursor: 'pointer'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
