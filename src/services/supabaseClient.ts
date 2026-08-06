@@ -1,8 +1,17 @@
 import type { UserAccount, Review } from '../types';
 
-const USERS_KEY = 'igmdb_users_db_v1';
-const REVIEWS_KEY = 'igmdb_reviews_db_v1';
-const CURRENT_USER_KEY = 'igmdb_current_user_v1';
+const USERS_KEY = 'igmdb_users_db_v2';
+const REVIEWS_KEY = 'igmdb_reviews_db_v2';
+const CURRENT_USER_KEY = 'igmdb_current_user_v2';
+
+// Wipe legacy storage
+try {
+  localStorage.removeItem('igmdb_users_db_v1');
+  localStorage.removeItem('igmdb_reviews_db_v1');
+  localStorage.removeItem('igmdb_current_user_v1');
+} catch (e) {
+  // ignore
+}
 
 export async function getClientIp(): Promise<string> {
   try {
@@ -44,7 +53,7 @@ export function setCurrentUser(user: UserAccount | null): void {
   }
 }
 
-export async function registerUser(email: string, name: string): Promise<{ success: boolean; user?: UserAccount; error?: string; verificationCode?: string }> {
+export async function registerUser(email: string, password: string, name: string): Promise<{ success: boolean; user?: UserAccount; error?: string; verificationCode?: string }> {
   const currentIp = await getClientIp();
   const accounts = getStoredAccounts();
 
@@ -64,11 +73,19 @@ export async function registerUser(email: string, name: string): Promise<{ succe
     };
   }
 
+  if (!password || password.length < 4) {
+    return {
+      success: false,
+      error: 'Password must be at least 4 characters long.'
+    };
+  }
+
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
   const newUser: UserAccount = {
     id: 'user_' + Date.now(),
     email: email.trim(),
+    password: password.trim(),
     name: name.trim() || email.split('@')[0],
     isEmailVerified: false,
     isGoogleAuth: false,
@@ -89,23 +106,33 @@ export async function registerUser(email: string, name: string): Promise<{ succe
   return { success: true, user: newUser, verificationCode };
 }
 
-export async function registerWithGoogle(): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+export async function registerWithGoogle(googleEmailInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
   const currentIp = await getClientIp();
   const accounts = getStoredAccounts();
 
+  const googleEmail = googleEmailInput.trim();
+  if (!googleEmail || !googleEmail.includes('@')) {
+    return { success: false, error: 'Please enter a valid Google email address.' };
+  }
+
   const existingIpAccount = accounts.find(a => a.ipAddress === currentIp);
-  if (existingIpAccount && !existingIpAccount.isGoogleAuth) {
+  if (existingIpAccount && existingIpAccount.email.toLowerCase() !== googleEmail.toLowerCase()) {
     return {
       success: false,
       error: `Registration blocked: An account (${existingIpAccount.email}) has already been registered from IP address ${currentIp}.`
     };
   }
 
-  const googleEmail = 'google_user_' + Math.floor(Math.random() * 1000) + '@gmail.com';
+  const existingUser = accounts.find(a => a.email.toLowerCase() === googleEmail.toLowerCase());
+  if (existingUser) {
+    setCurrentUser(existingUser);
+    return { success: true, user: existingUser };
+  }
+
   const newUser: UserAccount = {
     id: 'google_user_' + Date.now(),
     email: googleEmail,
-    name: 'Google User',
+    name: googleEmail.split('@')[0],
     isEmailVerified: true,
     isGoogleAuth: true,
     ipAddress: currentIp,
@@ -117,14 +144,10 @@ export async function registerWithGoogle(): Promise<{ success: boolean; user?: U
     continueWatching: []
   };
 
-  if (!existingIpAccount) {
-    accounts.push(newUser);
-    saveStoredAccounts(accounts);
-  }
-
-  const activeUser = existingIpAccount || newUser;
-  setCurrentUser(activeUser);
-  return { success: true, user: activeUser };
+  accounts.push(newUser);
+  saveStoredAccounts(accounts);
+  setCurrentUser(newUser);
+  return { success: true, user: newUser };
 }
 
 export function verifyEmailCode(user: UserAccount, enteredCode: string, targetCode: string): { success: boolean; error?: string } {
@@ -147,12 +170,16 @@ export function verifyEmailCode(user: UserAccount, enteredCode: string, targetCo
   return { success: true };
 }
 
-export async function loginUser(email: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+export async function loginUser(email: string, passwordInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
   const accounts = getStoredAccounts();
   const account = accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
 
   if (!account) {
     return { success: false, error: 'Account not found for this email. Please register first.' };
+  }
+
+  if (account.password && account.password !== passwordInput.trim()) {
+    return { success: false, error: 'Incorrect password. Please try again.' };
   }
 
   setCurrentUser(account);
@@ -166,10 +193,9 @@ export function logoutUser(): void {
 export function getStoredReviews(): Review[] {
   try {
     const data = localStorage.getItem(REVIEWS_KEY);
-    if (!data) return getInitialDefaultReviews();
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   } catch {
-    return getInitialDefaultReviews();
+    return [];
   }
 }
 
@@ -227,7 +253,7 @@ export function updateUserWatchlist(mediaItem: { id: number | string; mediaType:
   if (!user) return null;
 
   const exists = user.watchlist.some(item => String(item.id) === String(mediaItem.id) && item.mediaType === mediaItem.mediaType);
-
+  
   let newWatchlist = [...user.watchlist];
   if (exists) {
     newWatchlist = newWatchlist.filter(item => !(String(item.id) === String(mediaItem.id) && item.mediaType === mediaItem.mediaType));
@@ -262,39 +288,4 @@ export function updateContinueWatching(mediaItem: { id: number | string; mediaTy
   saveStoredAccounts(accounts);
 
   return updatedUser;
-}
-
-function getInitialDefaultReviews(): Review[] {
-  return [
-    {
-      id: 'rev_1',
-      mediaId: 550,
-      mediaType: 'movie',
-      mediaTitle: 'Fight Club',
-      userId: 'u_101',
-      userName: 'CinemaCritic99',
-      userEmail: 'critic@gmail.com',
-      isVerifiedEmail: true,
-      isGoogleUser: true,
-      rating: 10,
-      headline: 'A groundbreaking cinematic masterpiece of psychological depth',
-      content: 'Fincher’s direction combined with Pitt and Norton’s incredible performances makes Fight Club an unmatched classic. The twist hits hard every single rewatch.',
-      createdAt: '2026-07-28T14:30:00Z'
-    },
-    {
-      id: 'rev_2',
-      mediaId: 3328,
-      mediaType: 'game',
-      mediaTitle: 'The Witcher 3: Wild Hunt',
-      userId: 'u_102',
-      userName: 'GamerXavier',
-      userEmail: 'xavier@gaming.io',
-      isVerifiedEmail: true,
-      isGoogleUser: false,
-      rating: 10,
-      headline: 'The pinnacle of open-world RPG storytelling',
-      content: 'Every quest feels meaningful. The world of Geralt of Rivia is rich, brutal, and utterly breathtaking. Must play for anyone who loves deep narrative games.',
-      createdAt: '2026-08-01T09:15:00Z'
-    }
-  ];
 }

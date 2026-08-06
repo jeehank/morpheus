@@ -85,6 +85,7 @@ export interface Review {
 export interface UserAccount {
   id: string;
   email: string;
+  password?: string;
   name: string;
   isEmailVerified: boolean;
   isGoogleAuth: boolean;
