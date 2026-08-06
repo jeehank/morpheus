@@ -119,7 +119,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'all 0.2s',
-                boxShadow: activeTab === 'upcoming' ? '0 4px 16px rgba(245, 124, 0, 0.4)' : 'none'
+                border: activeTab === 'upcoming' ? '1px solid var(--brand-orange)' : '1px solid #333'
               }}
             >
               <Calendar size={20} />
@@ -144,7 +144,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'all 0.2s',
-                boxShadow: activeTab === 'recent' ? '0 4px 16px rgba(245, 124, 0, 0.4)' : 'none'
+                border: activeTab === 'recent' ? '1px solid var(--brand-orange)' : '1px solid #333'
               }}
             >
               <Clock size={20} />
