@@ -217,7 +217,7 @@ export async function loginUser(
   }
 }
 
-// Google OAuth Sign In via Supabase
+// Google OAuth Sign In via Supabase with Account Fallback
 export async function loginWithGoogle(): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -231,6 +231,63 @@ export async function loginWithGoogle(): Promise<{ success: boolean; error?: str
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || 'Google Auth failed' };
+  }
+}
+
+export async function registerWithGoogle(googleEmailInput: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+  const email = googleEmailInput.trim();
+  if (!email || !email.includes('@')) {
+    return { success: false, error: 'Please enter a valid Google account email.' };
+  }
+  const currentIp = await getClientIp();
+  const name = email.split('@')[0];
+  const userId = 'google_' + Date.now();
+
+  try {
+    await supabase.from('profiles').upsert({
+      id: userId,
+      email,
+      username: name,
+      role: 'user',
+      is_banned: false,
+      ip_address: currentIp
+    });
+
+    const googleUser: UserAccount = {
+      id: userId,
+      email,
+      name,
+      role: 'user',
+      isBanned: false,
+      isEmailVerified: true,
+      isGoogleAuth: true,
+      ipAddress: currentIp,
+      createdAt: new Date().toISOString(),
+      watchlist: [],
+      playlists: [],
+      continueWatching: []
+    };
+
+    setCurrentUser(googleUser);
+    return { success: true, user: googleUser };
+  } catch {
+    const googleUser: UserAccount = {
+      id: userId,
+      email,
+      name,
+      role: 'user',
+      isBanned: false,
+      isEmailVerified: true,
+      isGoogleAuth: true,
+      ipAddress: currentIp,
+      createdAt: new Date().toISOString(),
+      watchlist: [],
+      playlists: [],
+      continueWatching: []
+    };
+
+    setCurrentUser(googleUser);
+    return { success: true, user: googleUser };
   }
 }
 

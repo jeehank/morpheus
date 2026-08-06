@@ -115,10 +115,6 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
   const rating = mediaItem.vote_average || (mediaItem as Game).rating || 8.5;
   const releaseDate = mediaItem.release_date || (mediaItem as Game).released || 'N/A';
   
-  const backdropUrl = type === 'movie'
-    ? getTmdbImageUrl(mediaItem.backdrop_path ?? null, 'original')
-    : ((mediaItem as Game).backdrop_path || (mediaItem as Game).cover_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200');
-
   const posterUrl = type === 'movie'
     ? getTmdbImageUrl(mediaItem.poster_path ?? null, 'w500')
     : ((mediaItem as Game).cover_url || (mediaItem as Game).poster_path || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500');
@@ -252,7 +248,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Main Visual Banner */}
+      {/* Main Visual Banner & Inline Official Trailer */}
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '16px', height: '420px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a1a1a', margin: '12px 0 32px 0' }}>
         
         {/* Poster */}
@@ -260,55 +256,45 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
           <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        {/* Backdrop Hero with Watch Trailer Button */}
+        {/* Embedded YouTube Official Trailer Player directly on page */}
         <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#000' }}>
-          <img src={backdropUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.65 }} />
-          
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(to top, rgba(18,18,18,0.9), transparent 60%)'
-          }} />
+          <iframe
+            src={trailerKey
+              ? `https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=0&rel=0`
+              : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(title + ' official trailer')}&autoplay=0`
+            }
+            title={`${title} Official Trailer`}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none'
+            }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
 
-          {/* Action Buttons: Watch Trailer & Add Watchlist */}
-          <div style={{ position: 'absolute', bottom: '24px', right: '24px', display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => setIsTrailerModalOpen(true)}
-              style={{
-                backgroundColor: 'var(--brand-orange)',
-                color: '#000',
-                fontWeight: 900,
-                fontSize: '0.95rem',
-                padding: '12px 24px',
-                borderRadius: '30px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <Play size={20} fill="#000" color="#000" />
-              <span>Watch Official Trailer</span>
-            </button>
-
-            <button
-              onClick={handleToggleWatchlist}
-              style={{
-                backgroundColor: inWatchlist ? '#333' : 'rgba(0,0,0,0.7)',
-                color: inWatchlist ? '#fff' : '#fff',
-                border: '1px solid #444',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                padding: '12px 24px',
-                borderRadius: '30px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {inWatchlist ? <Check size={18} /> : <Plus size={18} />}
-              <span>{inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
-            </button>
-          </div>
+          <button
+            onClick={handleToggleWatchlist}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              backgroundColor: inWatchlist ? '#333' : 'rgba(0,0,0,0.85)',
+              color: inWatchlist ? '#fff' : 'var(--brand-orange)',
+              border: '1px solid var(--brand-orange)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              zIndex: 10
+            }}
+          >
+            {inWatchlist ? <Check size={16} /> : <Plus size={16} />}
+            <span>{inWatchlist ? 'In Watchlist' : 'Add Watchlist'}</span>
+          </button>
         </div>
 
       </div>
@@ -325,6 +311,33 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
             <p style={{ fontSize: '1rem', color: '#ddd', lineHeight: 1.6, backgroundColor: '#1a1a1a', padding: '16px', borderRadius: '8px', border: '1px solid #2e2e2e' }}>
               {overview}
             </p>
+          </section>
+
+          {/* Official Embedded Video Trailer Section */}
+          <section style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', borderLeft: '4px solid var(--brand-orange)', paddingLeft: '10px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Play size={20} fill="var(--brand-orange)" color="var(--brand-orange)" />
+              <span>Official Video Trailer</span>
+            </h2>
+            <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid #2e2e2e' }}>
+              <iframe
+                src={trailerKey
+                  ? `https://www.youtube-nocookie.com/embed/${trailerKey}`
+                  : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(title + ' official trailer')}`
+                }
+                title={`Official Trailer: ${title}`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  border: 'none'
+                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </section>
 
           {/* Cast & Crew Section */}

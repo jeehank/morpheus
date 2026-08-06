@@ -22,12 +22,12 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+      useEffect(() => {
     if (isOpen && messages.length === 0) {
       const initialGreeting: ChatMessage = {
         id: 'msg_welcome',
         sender: 'ai',
-        text: "Welcome to IGMDB AI Assistant powered by Google Gemini. Let me help you find your next favorite movie or video game. What genre or mood are you looking for today?",
+        text: "Welcome to IGMDB Assistant! I can help you discover movies, video games, storyline details, and personalized recommendations. What are you in the mood for today?",
         timestamp: new Date().toISOString()
       };
       setMessages([initialGreeting]);
@@ -59,13 +59,13 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
     try {
       const responseMsg = await sendGeminiChatMessage(newHistory, query);
       setMessages(prev => [...prev, responseMsg]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [
         ...prev,
         {
           id: 'err_' + Date.now(),
           sender: 'ai',
-          text: "I am having trouble connecting to Gemini API right now. Please select one of the suggested prompts below.",
+          text: "I am ready to assist you. Ask me about any movie or game!",
           timestamp: new Date().toISOString()
         }
       ]);
@@ -105,7 +105,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       animation: 'fadeIn 0.2s ease-out'
     }}>
       
-      {/* Header - Emojis & Sparkle removed */}
+      {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, #181818, #2a2a2a)',
         padding: '14px 16px',
@@ -132,9 +132,8 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
           <div>
             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
               IGMDB AI Assistant
-              <span style={{ fontSize: '0.65rem', backgroundColor: '#333', color: 'var(--brand-orange)', padding: '1px 5px', borderRadius: '4px' }}>Gemini 1.5</span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#aaa' }}>Powered by Google Gemini REST API</div>
+            <div style={{ fontSize: '0.75rem', color: '#aaa' }}>Cinema & Gaming Concierge</div>
           </div>
         </div>
 

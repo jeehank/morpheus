@@ -250,7 +250,7 @@ export function App() {
             <span>an IMDb & IGDB company</span>
           </div>
 
-          <p>2026 IGMDb.com, Inc. Dynamic TMDB, IGDB Railway Proxy & Google Gemini AI Integration.</p>
+          <p>© 2026 IGMDb.com, Inc. All rights reserved.</p>
         </div>
       </footer>
 
