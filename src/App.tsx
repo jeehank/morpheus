@@ -3,16 +3,14 @@ import { Navbar } from './components/Navbar';
 import { MenuDrawer } from './components/MenuDrawer';
 import { AiChatDrawer } from './components/AiChatDrawer';
 import { AuthModal } from './components/AuthModal';
-import { TrailerModal } from './components/TrailerModal';
 
 import { HomePage } from './pages/HomePage';
 import { MoviesPage } from './pages/MoviesPage';
 import { GamesPage } from './pages/GamesPage';
 import { SchedulePage } from './pages/SchedulePage';
+import { LibraryPage } from './pages/LibraryPage';
 import { MediaDetailPage } from './pages/MediaDetailPage';
 import { AccountCenter } from './pages/AccountCenter';
-
-import { fetchMovieVideos } from './services/tmdbApi';
 
 export function App() {
   const [activePage, setActivePage] = useState<string>('home');
@@ -23,30 +21,10 @@ export function App() {
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  // Trailer Modal State
-  const [trailerState, setTrailerState] = useState<{ isOpen: boolean; title: string; videoKey?: string }>({
-    isOpen: false,
-    title: ''
-  });
-
   const handleNavigate = (page: string, params?: any) => {
     setActivePage(page);
     setPageParams(params);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleOpenTrailer = async (title: string, videoKey?: string) => {
-    if (videoKey) {
-      setTrailerState({ isOpen: true, title, videoKey });
-      return;
-    }
-
-    if (pageParams?.id && pageParams?.type === 'movie') {
-      const key = await fetchMovieVideos(pageParams.id);
-      setTrailerState({ isOpen: true, title, videoKey: key || undefined });
-    } else {
-      setTrailerState({ isOpen: true, title });
-    }
   };
 
   return (
@@ -101,6 +79,18 @@ export function App() {
           </button>
 
           <button
+            onClick={() => handleNavigate('library')}
+            style={{
+              color: activePage === 'library' ? 'var(--brand-orange)' : '#ccc',
+              borderBottom: activePage === 'library' ? '2px solid var(--brand-orange)' : 'none',
+              height: '100%',
+              padding: '0 4px'
+            }}
+          >
+            📚 Library (80+ Movies & Games)
+          </button>
+
+          <button
             onClick={() => handleNavigate('schedule')}
             style={{
               color: activePage === 'schedule' ? 'var(--brand-orange)' : '#ccc',
@@ -109,7 +99,7 @@ export function App() {
               padding: '0 4px'
             }}
           >
-            📅 Release Schedule
+            📅 2026 Schedule
           </button>
 
           <button
@@ -134,7 +124,6 @@ export function App() {
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
             onOpenAiChat={() => setIsAiChatOpen(true)}
-            onOpenTrailer={handleOpenTrailer}
           />
         )}
 
@@ -142,7 +131,6 @@ export function App() {
           <MoviesPage
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
-            onOpenTrailer={handleOpenTrailer}
           />
         )}
 
@@ -150,7 +138,13 @@ export function App() {
           <GamesPage
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
-            onOpenTrailer={handleOpenTrailer}
+          />
+        )}
+
+        {activePage === 'library' && (
+          <LibraryPage
+            onNavigate={handleNavigate}
+            onOpenAuth={() => setIsAuthOpen(true)}
           />
         )}
 
@@ -167,7 +161,6 @@ export function App() {
             type={pageParams.type}
             onNavigate={handleNavigate}
             onOpenAuth={() => setIsAuthOpen(true)}
-            onOpenTrailer={handleOpenTrailer}
           />
         )}
 
@@ -184,9 +177,10 @@ export function App() {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px', fontWeight: 600, color: '#ccc' }}>
             <span onClick={() => handleNavigate('home')} style={{ cursor: 'pointer' }}>Help</span>
-            <span onClick={() => handleNavigate('schedule')} style={{ cursor: 'pointer' }}>Release Schedule</span>
+            <span onClick={() => handleNavigate('library')} style={{ cursor: 'pointer' }}>All Library</span>
+            <span onClick={() => handleNavigate('schedule')} style={{ cursor: 'pointer' }}>2026 Schedule</span>
             <span onClick={() => handleNavigate('account')} style={{ cursor: 'pointer' }}>IGMDB Account</span>
-            <span onClick={() => setIsAiChatOpen(true)} style={{ cursor: 'pointer', color: 'var(--brand-orange)' }}>AI Concierge</span>
+            <span onClick={() => setIsAiChatOpen(true)} style={{ cursor: 'pointer', color: 'var(--brand-orange)' }}>AI Assistant</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '16px 0' }}>
@@ -196,7 +190,7 @@ export function App() {
             <span>an IMDb & IGDB company</span>
           </div>
 
-          <p>© 2026 IGMDb.com, Inc. or its affiliates. Dynamic TMDB & TheGamesDB Live Data Integration.</p>
+          <p>© 2026 IGMDb.com, Inc. or its affiliates. Dynamic TMDB & IGDB Railway Proxy Data Integration.</p>
         </div>
       </footer>
 
@@ -221,13 +215,6 @@ export function App() {
         onSuccess={() => {
           setIsAuthOpen(false);
         }}
-      />
-
-      <TrailerModal
-        isOpen={trailerState.isOpen}
-        title={trailerState.title}
-        videoKey={trailerState.videoKey}
-        onClose={() => setTrailerState({ isOpen: false, title: '' })}
       />
 
     </div>

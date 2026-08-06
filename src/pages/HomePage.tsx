@@ -3,21 +3,19 @@ import { ChevronRight, Sparkles } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
 import { fetchTrendingMovies, fetchTopRatedMovies } from '../services/tmdbApi';
-import { fetchPopularGames, fetchTrendingGames } from '../services/thegamesdbApi';
+import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
 import type { Movie, Game } from '../types';
 
 interface HomePageProps {
   onNavigate: (page: string, params?: any) => void;
   onOpenAuth: () => void;
   onOpenAiChat: () => void;
-  onOpenTrailer: (title: string, videoKey?: string) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   onNavigate,
   onOpenAuth,
-  onOpenAiChat,
-  onOpenTrailer
+  onOpenAiChat
 }) => {
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
@@ -27,17 +25,16 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     async function loadAllData() {
       try {
-        const [moviesTrend, moviesTop, gamesPop, gamesTrend] = await Promise.all([
+        const [moviesTrend, moviesTop, games] = await Promise.all([
           fetchTrendingMovies(),
           fetchTopRatedMovies(),
-          fetchPopularGames(),
-          fetchTrendingGames()
+          fetchGamesFromIGDB()
         ]);
 
         setTrendingMovies(moviesTrend);
         setTopRatedMovies(moviesTop);
-        setPopularGames(gamesPop);
-        setTrendingGames(gamesTrend);
+        setPopularGames(games.slice(0, 10));
+        setTrendingGames(games.slice(10, 20));
       } catch (err) {
         console.error('Error loading homepage media:', err);
       }
@@ -59,7 +56,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         featuredItems={heroItems}
         onNavigate={onNavigate}
         onOpenAuth={onOpenAuth}
-        onOpenTrailer={onOpenTrailer}
       />
 
       {/* Daily AI Recommendation Prompt Banner */}
@@ -97,7 +93,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               Want a personalized movie or game recommendation?
             </div>
             <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '2px' }}>
-              Chat with our interactive AI concierge to get tailored daily recommendations matching your exact taste!
+              Chat with our dynamic AI Assistant to get tailored recommendations matching your exact taste!
             </div>
           </div>
         </div>
@@ -137,17 +133,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               item={movie}
               onNavigate={onNavigate}
               onOpenAuth={onOpenAuth}
-              onOpenTrailer={onOpenTrailer}
             />
           ))}
         </div>
       </section>
 
-      {/* Popular Video Games Section */}
+      {/* Popular Video Games Section (IGDB Proxy) */}
       <section style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
-            <span>Top Video Games</span>
+            <span>Top Video Games (IGDB)</span>
             <ChevronRight size={22} color="var(--brand-orange)" />
           </div>
           <button 
@@ -165,7 +160,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               item={game}
               onNavigate={onNavigate}
               onOpenAuth={onOpenAuth}
-              onOpenTrailer={onOpenTrailer}
             />
           ))}
         </div>
@@ -186,7 +180,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               item={item}
               onNavigate={onNavigate}
               onOpenAuth={onOpenAuth}
-              onOpenTrailer={onOpenTrailer}
             />
           ))}
         </div>

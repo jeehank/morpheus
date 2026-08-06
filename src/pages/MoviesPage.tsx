@@ -8,13 +8,11 @@ import type { Movie } from '../types';
 interface MoviesPageProps {
   onNavigate: (page: string, params?: any) => void;
   onOpenAuth: () => void;
-  onOpenTrailer: (title: string, videoKey?: string) => void;
 }
 
 export const MoviesPage: React.FC<MoviesPageProps> = ({
   onNavigate,
-  onOpenAuth,
-  onOpenTrailer
+  onOpenAuth
 }) => {
   const [trending, setTrending] = useState<Movie[]>([]);
   const [topRated, setTopRated] = useState<Movie[]>([]);
@@ -55,7 +53,6 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         featuredItems={trending.slice(0, 5)}
         onNavigate={onNavigate}
         onOpenAuth={onOpenAuth}
-        onOpenTrailer={onOpenTrailer}
       />
 
       {/* Most Popular Movies */}
@@ -69,7 +66,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         </div>
         <div className="media-scroll-row">
           {trending.map(m => (
-            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} onOpenTrailer={onOpenTrailer} />
+            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} />
           ))}
         </div>
       </section>
@@ -84,7 +81,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         </div>
         <div className="media-scroll-row">
           {topRated.map(m => (
-            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} onOpenTrailer={onOpenTrailer} />
+            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} />
           ))}
         </div>
       </section>
@@ -99,7 +96,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         </div>
         <div className="media-scroll-row">
           {nowPlaying.map(m => (
-            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} onOpenTrailer={onOpenTrailer} />
+            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} />
           ))}
         </div>
       </section>
@@ -117,7 +114,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         </div>
         <div className="media-scroll-row">
           {upcoming.map(m => (
-            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} onOpenTrailer={onOpenTrailer} />
+            <MediaCard key={m.id} item={m} onNavigate={onNavigate} onOpenAuth={onOpenAuth} />
           ))}
         </div>
       </section>
