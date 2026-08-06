@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Search, Bookmark, User, Globe, Sparkles, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Menu, Search, Bookmark, User, Globe, Sparkles, LogOut, CheckCircle2, ShieldAlert, Library } from 'lucide-react';
 import { getCurrentUser, logoutUser } from '../services/supabaseClient';
 import { searchMovies } from '../services/tmdbApi';
 import { searchGames } from '../services/thegamesdbApi';
@@ -131,8 +131,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>Menu</span>
         </button>
 
+        {/* Library Top Button */}
+        <button
+          onClick={() => onNavigate('library')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            backgroundColor: '#262626',
+            border: '1px solid #383838'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--brand-orange)'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#383838'}
+        >
+          <Library size={18} color="var(--brand-orange)" />
+          <span>Library</span>
+        </button>
+
         {/* Search Bar matching IMDb */}
-        <div ref={searchRef} style={{ flex: 1, position: 'relative', maxWidth: '720px' }}>
+        <div ref={searchRef} style={{ flex: 1, position: 'relative', maxWidth: '640px' }}>
           <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderRadius: '4px', overflow: 'hidden', height: '36px' }}>
             
             {/* Category Dropdown */}
@@ -266,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* AI Concierge Chat trigger */}
+        {/* Simple AI Assistant Trigger */}
         <button
           onClick={onOpenAiChat}
           style={{
@@ -275,15 +297,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             gap: '6px',
             background: 'linear-gradient(135deg, #f57c00, #ff6b00)',
             color: '#000',
-            fontWeight: 700,
+            fontWeight: 800,
             fontSize: '0.85rem',
-            padding: '6px 12px',
+            padding: '6px 14px',
             borderRadius: '20px',
             boxShadow: '0 0 12px rgba(245, 124, 0, 0.4)'
           }}
         >
           <Sparkles size={16} />
-          <span>AI Recommendations</span>
+          <span>AI Assistant</span>
         </button>
 
         {/* Watchlist Button */}

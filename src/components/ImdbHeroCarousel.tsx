@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Plus, Check, ChevronRight } from 'lucide-react';
+import { Plus, Check, ChevronRight } from 'lucide-react';
 import type { Movie, Game, UserAccount } from '../types';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
@@ -7,14 +7,12 @@ interface ImdbHeroCarouselProps {
   featuredItems: (Movie | Game)[];
   onNavigate: (page: string, params?: any) => void;
   onOpenAuth?: () => void;
-  onOpenTrailer: (title: string, videoKey?: string) => void;
 }
 
 export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
   featuredItems,
   onNavigate,
-  onOpenAuth,
-  onOpenTrailer
+  onOpenAuth
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
@@ -85,44 +83,6 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
           background: 'linear-gradient(to top, rgba(18,18,18,1) 0%, rgba(18,18,18,0.4) 50%, transparent 100%)'
         }} />
 
-        {/* Play Icon Center Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenTrailer(activeTitle);
-          }}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -60%)',
-            width: '72px',
-            height: '72px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(0,0,0,0.65)',
-            border: '2px solid #fff',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s, background 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translate(-50%, -60%) scale(1.1)';
-            e.currentTarget.style.backgroundColor = 'var(--brand-orange)';
-            e.currentTarget.style.borderColor = 'var(--brand-orange)';
-            e.currentTarget.style.color = '#000';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translate(-50%, -60%) scale(1)';
-            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.65)';
-            e.currentTarget.style.borderColor = '#fff';
-            e.currentTarget.style.color = '#fff';
-          }}
-        >
-          <Play size={36} fill="currentColor" style={{ marginLeft: '4px' }} />
-        </button>
-
         {/* Bottom Banner Content */}
         <div style={{
           position: 'absolute',
@@ -162,7 +122,7 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
             </button>
           </div>
 
-          {/* Text Title & Trailer details */}
+          {/* Text Title details */}
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span style={{
@@ -191,7 +151,7 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
               overflow: 'hidden',
               maxWidth: '650px'
             }}>
-              {activeItem.overview || (activeItem as any).summary || 'Watch official trailer & explore reviews.'}
+              {activeItem.overview || (activeItem as any).summary || 'Explore rating, storyline & user reviews.'}
             </p>
           </div>
         </div>
@@ -238,20 +198,17 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
               >
                 <div style={{ position: 'relative', width: '64px', height: '90px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
                   <img src={itemPoster} alt={itemTitle} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Play size={16} fill="#fff" color="#fff" />
-                  </div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', fontWeight: 700, textTransform: 'uppercase' }}>
-                    Trailer
+                    Spotlight
                   </div>
                   <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#fff', lineHeight: 1.2, marginTop: '2px' }}>
                     {itemTitle}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '4px' }}>
-                    Watch official preview
+                    Click to view spotlight
                   </div>
                 </div>
               </div>
