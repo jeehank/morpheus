@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Gamepad2, ChevronRight, TrendingUp, DollarSign, Award, Sparkles } from 'lucide-react';
+import { ChevronRight, Sparkles } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
-import { fetchTrendingMovies, fetchTopRatedMovies, fetchNowPlayingMovies } from '../services/tmdbApi';
+import { fetchTrendingMovies, fetchTopRatedMovies } from '../services/tmdbApi';
 import { fetchPopularGames, fetchTrendingGames } from '../services/thegamesdbApi';
-import { Movie, Game } from '../types';
+import type { Movie, Game } from '../types';
 
 interface HomePageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -23,11 +23,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularGames, setPopularGames] = useState<Game[]>([]);
   const [trendingGames, setTrendingGames] = useState<Game[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadAllData() {
-      setIsLoading(true);
       try {
         const [moviesTrend, moviesTop, gamesPop, gamesTrend] = await Promise.all([
           fetchTrendingMovies(),
@@ -42,8 +40,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         setTrendingGames(gamesTrend);
       } catch (err) {
         console.error('Error loading homepage media:', err);
-      } finally {
-        setIsLoading(false);
       }
     }
 

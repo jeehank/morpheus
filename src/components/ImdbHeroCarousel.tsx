@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Play, Plus, Check, ChevronRight, Bookmark } from 'lucide-react';
-import { Movie, Game, UserAccount } from '../types';
+import { Play, Plus, Check, ChevronRight } from 'lucide-react';
+import type { Movie, Game, UserAccount } from '../types';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface ImdbHeroCarouselProps {
@@ -23,6 +23,7 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
 
   const activeItem = featuredItems[activeIndex] || featuredItems[0];
   const activeTitle = 'title' in activeItem ? activeItem.title : activeItem.name;
+  const activeRating = activeItem.vote_average || activeItem.rating || 8.5;
   const activeBackdrop = activeItem.backdrop_path 
     ? (activeItem.backdrop_path.startsWith('http') ? activeItem.backdrop_path : `https://image.tmdb.org/t/p/original${activeItem.backdrop_path}`)
     : 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200';
@@ -175,7 +176,7 @@ export const ImdbHeroCarousel: React.FC<ImdbHeroCarouselProps> = ({
               }}>
                 Featured {activeItem.media_type}
               </span>
-              <span style={{ fontSize: '0.85rem', color: '#ccc' }}>★ {(activeItem.vote_average || activeItem.rating || 8.5).toFixed(1)}</span>
+              <span style={{ fontSize: '0.85rem', color: '#ccc' }}>★ {activeRating.toFixed(1)}</span>
             </div>
 
             <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1.1, marginBottom: '8px' }}>
