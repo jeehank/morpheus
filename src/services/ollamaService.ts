@@ -1,23 +1,14 @@
-import { ChatMessage } from '../types';
+import type { ChatMessage } from '../types';
 
 const OLLAMA_ENDPOINT = 'http://localhost:11434/api/chat';
 
 export async function sendChatMessage(messages: ChatMessage[], userText: string): Promise<ChatMessage> {
-  const userMsgId = 'msg_' + Date.now();
-  const userMsg: ChatMessage = {
-    id: userMsgId,
-    sender: 'user',
-    text: userText,
-    timestamp: new Date().toISOString()
-  };
-
   try {
-    // Attempt local Ollama API call
     const ollamaResponse = await fetch(OLLAMA_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3', // or mistral / standard ollama model
+        model: 'llama3',
         messages: [
           { role: 'system', content: 'You are IGMDB AI, a world-class film & gaming concierge. You chat naturally with users like a real movie & gaming guru. You ask intelligent questions to understand their exact mood and taste, then recommend top movies and games.' },
           ...messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
@@ -38,7 +29,7 @@ export async function sendChatMessage(messages: ChatMessage[], userText: string)
       };
     }
   } catch (err) {
-    // Ollama not active locally or network blocked; use dynamic conversational engine
+    // Ollama fallback
   }
 
   return generateSmartAiResponse(userText, messages);

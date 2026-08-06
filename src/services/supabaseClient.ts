@@ -1,4 +1,4 @@
-import { UserAccount, Review } from '../types';
+import type { UserAccount, Review } from '../types';
 
 const USERS_KEY = 'igmdb_users_db_v1';
 const REVIEWS_KEY = 'igmdb_reviews_db_v1';
@@ -48,7 +48,6 @@ export async function registerUser(email: string, name: string): Promise<{ succe
   const currentIp = await getClientIp();
   const accounts = getStoredAccounts();
 
-  // Enforce ONE account per IP address!
   const existingIpAccount = accounts.find(a => a.ipAddress === currentIp);
   if (existingIpAccount) {
     return {
@@ -192,7 +191,6 @@ export async function addReview(
     return { success: false, error: 'You must be signed in to post a review.' };
   }
 
-  // Strictly enforce email verification OR Google SSO requirement
   if (!currentUser.isEmailVerified && !currentUser.isGoogleAuth) {
     return {
       success: false,
