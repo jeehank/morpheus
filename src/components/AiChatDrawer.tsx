@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Plus, Check, Bot, User as UserIcon } from 'lucide-react';
 import type { ChatMessage, UserAccount } from '../types';
 import { sendGeminiChatMessage } from '../services/geminiService';
-import { getCurrentUser, updateUserWatchlist } from '../services/firebaseClient';
+import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface AiChatDrawerProps {
   isOpen: boolean;

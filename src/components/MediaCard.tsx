@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star, Plus, Check } from 'lucide-react';
 import type { MediaItem, UserAccount } from '../types';
-import { updateUserWatchlist, getCurrentUser } from '../services/firebaseClient';
+import { updateUserWatchlist, getCurrentUser } from '../services/supabaseClient';
 
 interface MediaCardProps {
   item: MediaItem;

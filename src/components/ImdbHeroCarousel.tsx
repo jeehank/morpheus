@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Check, ChevronRight } from 'lucide-react';
 import type { Movie, Game, UserAccount } from '../types';
-import { getCurrentUser, updateUserWatchlist } from '../services/firebaseClient';
+import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface ImdbHeroCarouselProps {
   featuredItems: (Movie | Game)[];
