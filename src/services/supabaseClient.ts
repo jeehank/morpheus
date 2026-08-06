@@ -121,7 +121,7 @@ export async function registerWithGoogle(): Promise<{ success: boolean; user?: U
     accounts.push(newUser);
     saveStoredAccounts(accounts);
   }
-  
+
   const activeUser = existingIpAccount || newUser;
   setCurrentUser(activeUser);
   return { success: true, user: activeUser };
@@ -227,7 +227,7 @@ export function updateUserWatchlist(mediaItem: { id: number | string; mediaType:
   if (!user) return null;
 
   const exists = user.watchlist.some(item => String(item.id) === String(mediaItem.id) && item.mediaType === mediaItem.mediaType);
-  
+
   let newWatchlist = [...user.watchlist];
   if (exists) {
     newWatchlist = newWatchlist.filter(item => !(String(item.id) === String(mediaItem.id) && item.mediaType === mediaItem.mediaType));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldAlert, CheckCircle2, Mail, Lock, User, Globe, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle2, Mail, User, Globe, AlertTriangle } from 'lucide-react';
 import { getClientIp, registerUser, loginUser, registerWithGoogle, verifyEmailCode } from '../services/supabaseClient';
-import { UserAccount } from '../types';
+import type { UserAccount } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
