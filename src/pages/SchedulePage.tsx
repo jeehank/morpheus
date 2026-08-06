@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Film, Gamepad2, Star, Plus, Check } from 'lucide-react';
+import { Calendar, Clock, Star, Plus, Check } from 'lucide-react';
 import { fetchUpcomingMovies, fetchNowPlayingMovies } from '../services/tmdbApi';
 import { fetchUpcomingGames, fetchPopularGames } from '../services/thegamesdbApi';
-import { Movie, Game, UserAccount } from '../types';
+import type { Movie, Game, UserAccount } from '../types';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
 interface SchedulePageProps {
