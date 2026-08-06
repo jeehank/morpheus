@@ -35,13 +35,18 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
           fetchPopularGames()
         ]);
         
-        setUpcomingMovies(upM);
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Strict future release filter for Upcoming (release_date > today)
+        const futureMovies = upM.filter(m => m.release_date && m.release_date > todayStr);
+        setUpcomingMovies(futureMovies.length > 0 ? futureMovies : upM);
         
-        // Filter recently released strictly to 2026 releases ONLY!
+        // Filter recently released strictly to 2026 releases
         const filteredRecentMovies = recM.filter(m => m.release_date && m.release_date.startsWith('2026'));
         setRecentMovies(filteredRecentMovies.length > 0 ? filteredRecentMovies : recM.slice(0, 10));
 
-        setUpcomingGames(upG);
+        const futureGames = upG.filter(g => (g.release_date && g.release_date > todayStr) || (g.released && g.released > todayStr));
+        setUpcomingGames(futureGames.length > 0 ? futureGames : upG);
         
         const filteredRecentGames = recG.filter(g => (g.release_date && g.release_date.startsWith('2026')) || (g.released && g.released.startsWith('2026')));
         setRecentGames(filteredRecentGames.length > 0 ? filteredRecentGames : recG.slice(0, 10));
@@ -85,7 +90,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
             <span>2026 Release Calendar & Schedule</span>
           </div>
           <p style={{ color: '#aaa', fontSize: '0.9rem', marginTop: '4px' }}>
-            Track upcoming theatrical releases, premieres, and launch dates strictly for 2026.
+            Track unreleased upcoming theatrical premieres and recently released titles.
           </p>
         </div>
       </div>
@@ -97,7 +102,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
         </div>
       ) : (
         <>
-          {/* Main Tab Switches: Upcoming vs Recently Released (2026 ONLY) */}
+          {/* Main Tab Switches: Upcoming vs Recently Released */}
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
             <button
               onClick={() => setActiveTab('upcoming')}
@@ -118,7 +123,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               }}
             >
               <Calendar size={20} />
-              <span>Upcoming 2026 Releases</span>
+              <span>Upcoming Unreleased Titles</span>
               <span style={{ fontSize: '0.75rem', backgroundColor: activeTab === 'upcoming' ? '#000' : '#333', color: activeTab === 'upcoming' ? '#fff' : '#aaa', padding: '2px 8px', borderRadius: '10px' }}>
                 {upcomingMovies.length + upcomingGames.length}
               </span>
@@ -231,7 +236,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                           {item.media_type}
                         </span>
                         <span style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 600 }}>
-                          🗓️ {date}
+                          Release: {date}
                         </span>
                       </div>
 
