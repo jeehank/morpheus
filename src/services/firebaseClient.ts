@@ -7,8 +7,7 @@ import {
   signInWithEmailAndPassword,
   sendEmailVerification,
   signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User as FirebaseUser
+  type User as FirebaseUser
 } from 'firebase/auth';
 import type { UserAccount, Review, ReviewReport } from '../types';
 import { containsProfanity } from './profanityFilter';
@@ -271,6 +270,7 @@ export async function createModeratorAccount(
   const modAccount: UserAccount = {
     id: 'mod_' + Date.now(),
     email,
+    password,
     name,
     role: 'moderator',
     isBanned: false,
