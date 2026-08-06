@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
 import { fetchTrendingMovies, fetchTopRatedMovies } from '../services/tmdbApi';
@@ -84,16 +84,18 @@ export const HomePage: React.FC<HomePageProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0
+            flexShrink: 0,
+            fontWeight: 900,
+            fontSize: '0.9rem'
           }}>
-            <Sparkles size={24} />
+            AI
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>
               Want a personalized movie or game recommendation?
             </div>
             <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '2px' }}>
-              Chat with our dynamic AI Assistant to get tailored recommendations matching your exact taste!
+              Chat with our Gemini-powered AI Assistant to get tailored suggestions matching your exact taste.
             </div>
           </div>
         </div>
@@ -138,8 +140,45 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
+      {/* Top 250 Movies Section with Arrow Button */}
+      <section id="section-top250" style={{ marginBottom: '40px' }}>
+        <div className="section-heading">
+          <div className="section-title">
+            <span>Top Rated 250 Movies</span>
+          </div>
+          <button
+            onClick={() => onNavigate('top250')}
+            style={{
+              color: '#000',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              backgroundColor: 'var(--brand-orange)',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>See All 250 Movies</span>
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div className="media-scroll-row">
+          {topRatedMovies.slice(0, 10).map((movie) => (
+            <MediaCard
+              key={`top_${movie.id}`}
+              item={movie}
+              onNavigate={onNavigate}
+              onOpenAuth={onOpenAuth}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* Popular Video Games Section (IGDB Proxy) */}
-      <section style={{ marginBottom: '40px' }}>
+      <section id="section-games" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <span>Top Video Games (IGDB)</span>
@@ -174,7 +213,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         <div className="media-scroll-row">
-          {[...topRatedMovies.slice(0, 5), ...trendingGames.slice(0, 5)].map((item) => (
+          {[...topRatedMovies.slice(10, 15), ...trendingGames.slice(0, 5)].map((item) => (
             <MediaCard
               key={`fav_${item.media_type}_${item.id}`}
               item={item}

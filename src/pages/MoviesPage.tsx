@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Flame, Star, Calendar } from 'lucide-react';
+import { Film, Flame, Star, Calendar, ChevronRight } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
 import { fetchTrendingMovies, fetchTopRatedMovies, fetchNowPlayingMovies, fetchUpcomingMovies } from '../services/tmdbApi';
@@ -71,13 +71,30 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         </div>
       </section>
 
-      {/* Top 250 Movies */}
-      <section style={{ marginBottom: '40px' }}>
+      {/* Top 250 Movies with Arrow Button */}
+      <section id="section-top250" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <Star color="var(--star-yellow)" fill="var(--star-yellow)" size={22} />
             <span>Top Rated 250 Movies</span>
           </div>
+          <button
+            onClick={() => onNavigate('top250')}
+            style={{
+              color: '#000',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              backgroundColor: 'var(--brand-orange)',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>See All 250 Movies</span>
+            <ChevronRight size={18} />
+          </button>
         </div>
         <div className="media-scroll-row">
           {topRated.map(m => (
@@ -109,7 +126,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
             <span>Upcoming Releases</span>
           </div>
           <button onClick={() => onNavigate('schedule')} style={{ color: 'var(--brand-orange)', fontWeight: 700, fontSize: '0.85rem' }}>
-            Full 2026 Calendar →
+            Full 2026 Calendar
           </button>
         </div>
         <div className="media-scroll-row">
