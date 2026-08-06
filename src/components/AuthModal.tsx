@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Globe, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { getClientIp, registerUser, loginUser, registerWithGoogle, verifyEmailCode } from '../services/supabaseClient';
+import { X, Mail, Lock, User, Globe, AlertTriangle } from 'lucide-react';
+import { getClientIp, registerUser, loginUser, registerWithGoogle } from '../services/supabaseClient';
 import type { UserAccount } from '../types';
 
 interface AuthModalProps {
@@ -14,15 +14,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const [mode, setMode] = useState<'signin' | 'register' | 'google' | 'verify'>('signin');
+  const [mode, setMode] = useState<'signin' | 'register' | 'google'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [googleEmailInput, setGoogleEmailInput] = useState('');
-  const [verificationInput, setVerificationInput] = useState('');
-  const [targetCode, setTargetCode] = useState('');
   const [clientIp, setClientIp] = useState<string>('Detecting IP...');
-  const [pendingUser, setPendingUser] = useState<UserAccount | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -54,9 +51,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (res.user) {
-      setPendingUser(res.user);
-      setTargetCode(res.verificationCode || '123456');
-      setMode('verify');
+      onSuccess(res.user);
+      onClose();
     }
   };
 
@@ -108,20 +104,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleVerifySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingUser) return;
-
-    const res = verifyEmailCode(pendingUser, verificationInput, targetCode);
-    if (!res.success) {
-      setErrorMsg(res.error || 'Invalid verification code.');
-      return;
-    }
-
-    onSuccess({ ...pendingUser, isEmailVerified: true });
-    onClose();
-  };
-
   return (
     <div style={{
       position: 'fixed',
@@ -159,7 +141,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               IGMDb
             </div>
             <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff' }}>
-              {mode === 'signin' ? 'Sign In to IGMDb' : mode === 'register' ? 'Create Account' : mode === 'google' ? 'Google Authentication' : 'Verify Email Address'}
+              {mode === 'signin' ? 'Sign In to IGMDb' : mode === 'register' ? 'Create Account' : 'Google Authentication'}
             </span>
           </div>
 
@@ -381,7 +363,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', display: 'block', marginBottom: '6px' }}>
-                  Set Account Password
+                  Set Password
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
@@ -419,7 +401,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   marginTop: '6px'
                 }}
               >
-                {isLoading ? 'Creating Account...' : 'Register Account'}
+                {isLoading ? 'Creating Account...' : 'Register & Create Account'}
               </button>
 
               <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#aaa', marginTop: '8px' }}>
@@ -440,7 +422,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 700 }}>Enter Your Google Account Email</h3>
                 <p style={{ fontSize: '0.82rem', color: '#aaa', marginTop: '4px' }}>
-                  Google SSO instantly verifies your email address for review posting.
+                  Google SSO authenticates your email address for immediate review posting.
                 </p>
               </div>
 
@@ -492,60 +474,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 style={{ color: '#aaa', fontSize: '0.85rem' }}
               >
                 ← Back to standard Sign In
-              </button>
-            </form>
-          )}
-
-          {mode === 'verify' && (
-            <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ textAlign: 'center' }}>
-                <CheckCircle2 size={36} color="var(--brand-orange)" style={{ margin: '0 auto 8px auto' }} />
-                <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 700 }}>Verification Code Sent!</h3>
-                <p style={{ fontSize: '0.82rem', color: '#aaa', marginTop: '4px' }}>
-                  Enter your 6-digit verification code for <strong style={{ color: '#fff' }}>{email}</strong>
-                </p>
-                <div style={{ marginTop: '8px', backgroundColor: '#121212', padding: '6px 12px', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--brand-orange)', fontWeight: 700 }}>
-                  Demo Code: {targetCode}
-                </div>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="123456"
-                  value={verificationInput}
-                  onChange={(e) => setVerificationInput(e.target.value)}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#121212',
-                    border: '1px solid var(--border-orange)',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    color: '#fff',
-                    fontSize: '1.25rem',
-                    textAlign: 'center',
-                    letterSpacing: '8px',
-                    fontWeight: 800,
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{
-                  width: '100%',
-                  backgroundColor: 'var(--brand-orange)',
-                  color: '#000',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  padding: '10px',
-                  borderRadius: '6px'
-                }}
-              >
-                Verify & Unlock Full Reviewing Access
               </button>
             </form>
           )}
