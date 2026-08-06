@@ -413,6 +413,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Account Center & Playlists
               </button>
 
+              {(currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.email.toLowerCase() === 'morpheus@morpheus.com') && (
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onNavigate('admin');
+                  }}
+                  style={{ width: '100%', textAlign: 'left', padding: '8px 12px', color: 'var(--brand-orange)', fontWeight: 800, fontSize: '0.85rem', borderRadius: '4px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2c2c2c'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  Admin / Mod Portal
+                </button>
+              )}
+
               <button
                 onClick={handleLogout}
                 style={{ width: '100%', textAlign: 'left', padding: '8px 12px', color: '#ef4444', fontSize: '0.85rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}
