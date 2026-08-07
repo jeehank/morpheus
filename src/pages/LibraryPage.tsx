@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Gamepad2, Search, Filter, Loader2, ArrowDown } from 'lucide-react';
+import { Film, Gamepad2, Search, Filter, ArrowDown } from 'lucide-react';
 import { fetchTop250MoviesFull, movieMatchesGenre } from '../services/tmdbApi';
 import { fetchGamesFromIGDB, gameMatchesGenre } from '../services/thegamesdbApi';
 import { MediaCard } from '../components/MediaCard';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import type { Movie, Game } from '../types';
 
 interface LibraryPageProps {
@@ -187,10 +188,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
       {/* Library Grid View */}
       {isLoading ? (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <Loader2 size={40} className="animate-spin" />
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Loading {activeTab} library...</h3>
-        </div>
+        <CapybaraLoader caption={`Loading ${activeTab} library...`} />
       ) : displayedItems.length === 0 ? (
         <div style={{ padding: '60px 0', textAlign: 'center', color: '#aaa', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
           <h3>No titles found matching your search or genre filter</h3>

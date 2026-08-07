@@ -5,7 +5,7 @@ export const IGDB_IMG_BASE = "https://images.igdb.com/igdb/image/upload/t_cover_
 
 export function buildGamesQuery(filters?: any, offset = 0): string {
   const clauses = [
-    "fields name,total_rating,total_rating_count,aggregated_rating,rating,first_release_date,genres.name,cover.image_id,summary,platforms.name",
+    "fields name,total_rating,total_rating_count,aggregated_rating,rating,first_release_date,genres.name,cover.image_id,summary,platforms.name,videos.video_id",
     "sort total_rating_count desc",
     `limit 60`,
     `offset ${offset}`
@@ -97,6 +97,43 @@ export async function fetchGameDetails(id: number | string): Promise<Game | null
   return getFallbackGames().find(g => String(g.id) === String(id)) || null;
 }
 
+const GAME_TRAILER_MAP: Record<string, string> = {
+  "grand theft auto v": "QkkoHAzjinY",
+  "gta v": "QkkoHAzjinY",
+  "the witcher 3: wild hunt": "c0i88t0Kacs",
+  "elden ring": "E3Huy2cdih0",
+  "elden ring: shadow of the erdtree": "qLZenOn7WUo",
+  "red dead redemption 2": "eaW0tYxi4sU",
+  "cyberpunk 2077": "8X2kIfS6fb8",
+  "god of war ragnarök": "hfJ4Km46A-0",
+  "god of war ragnarok": "hfJ4Km46A-0",
+  "the legend of zelda: tears of the kingdom": "uHGShqc8XR8",
+  "baldur's gate 3": "1T22wNvoNiU",
+  "the last of us part i": "WxjeV10H1F0",
+  "marvel's spider-man 2": "bgqGdIoa52s",
+  "black myth: wukong": "pnD_e44M6a8",
+  "hollow knight": "UAO2urG23S4",
+  "portal 2": "tax4e4hBB43",
+  "minecraft": "MmB9b5njVbA",
+  "skyrim": "JSRtYapm7jA",
+  "starfield": "kfYEiTdsyas"
+};
+
+export async function fetchGameTrailerKey(item: Game | string | number): Promise<string | null> {
+  if (typeof item === 'object' && item !== null) {
+    if (item.trailer_key) return item.trailer_key;
+    const nameLower = item.name.toLowerCase();
+    if (GAME_TRAILER_MAP[nameLower]) return GAME_TRAILER_MAP[nameLower];
+    for (const [title, key] of Object.entries(GAME_TRAILER_MAP)) {
+      if (nameLower.includes(title) || title.includes(nameLower)) return key;
+    }
+  } else {
+    const game = await fetchGameDetails(item);
+    if (game) return fetchGameTrailerKey(game);
+  }
+  return null;
+}
+
 export async function searchGames(query: string): Promise<Game[]> {
   if (!query.trim()) return [];
   const allGames = await fetchGamesFromIGDB();
@@ -117,6 +154,10 @@ function formatIgdbGame(g: any): Game {
     ? Math.round((g.total_rating / 10) * 10) / 10
     : (g.rating ? Math.round((g.rating / 10) * 10) / 10 : 8.8);
 
+  const trailerKey = (g.videos && g.videos.length > 0 && g.videos[0].video_id)
+    ? g.videos[0].video_id
+    : (GAME_TRAILER_MAP[(g.name || '').toLowerCase()] || undefined);
+
   return {
     id: g.id,
     name: g.name,
@@ -136,6 +177,7 @@ function formatIgdbGame(g: any): Game {
     platforms: Array.isArray(g.platforms) ? g.platforms.map((p: any) => typeof p === 'object' ? p.name : p) : ["PC", "PlayStation 5", "Xbox Series X"],
     developers: ["AAA Game Studio"],
     publishers: ["Global Publishing"],
+    trailer_key: trailerKey,
     media_type: 'game'
   };
 }
@@ -156,6 +198,7 @@ export function getFallbackGames(): Game[] {
       vote_count: 7200,
       genres: ["Action", "Adventure"],
       platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+      trailer_key: "QkkoHAzjinY",
       media_type: 'game'
     },
     {
@@ -172,6 +215,7 @@ export function getFallbackGames(): Game[] {
       vote_count: 6500,
       genres: ["RPG", "Open World"],
       platforms: ["PC", "PlayStation 5", "Nintendo Switch"],
+      trailer_key: "c0i88t0Kacs",
       media_type: 'game'
     },
     {
@@ -188,6 +232,7 @@ export function getFallbackGames(): Game[] {
       vote_count: 9800,
       genres: ["Action", "RPG"],
       platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+      trailer_key: "E3Huy2cdih0",
       media_type: 'game'
     },
     {
@@ -204,6 +249,7 @@ export function getFallbackGames(): Game[] {
       vote_count: 4500,
       genres: ["RPG", "Action"],
       platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+      trailer_key: "qLZenOn7WUo",
       media_type: 'game'
     },
     {
@@ -220,6 +266,7 @@ export function getFallbackGames(): Game[] {
       vote_count: 8100,
       genres: ["Action", "Adventure"],
       platforms: ["PC", "PlayStation 4", "Xbox One"],
+      trailer_key: "eaW0tYxi4sU",
       media_type: 'game'
     }
   ];

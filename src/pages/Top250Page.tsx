@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Gamepad2, Loader2 } from 'lucide-react';
+import { Film, Gamepad2 } from 'lucide-react';
 import { fetchTop250MoviesFull } from '../services/tmdbApi';
 import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
 import { MediaCard } from '../components/MediaCard';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import type { Movie, Game } from '../types';
 
 interface Top250PageProps {
@@ -110,10 +111,7 @@ export const Top250Page: React.FC<Top250PageProps> = ({
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <Loader2 size={40} className="animate-spin" />
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Fetching Top 250 {activeTab}...</h3>
-        </div>
+        <CapybaraLoader caption={`Fetching Top 250 ${activeTab}...`} />
       ) : (
         <div style={{
           display: 'grid',

@@ -38,6 +38,7 @@ export interface Game {
   platforms?: { id: number; name: string }[] | string[];
   developers?: string[];
   publishers?: string[];
+  trailer_key?: string;
   media_type: 'game';
 }
 

@@ -11,6 +11,7 @@ import {
   unbanUser,
   fetchAllProfiles
 } from '../services/supabaseClient';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import type { ReviewReport, UserAccount } from '../types';
 
 interface AdminPanelPageProps {
@@ -232,7 +233,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ onNavigate }) =>
           </h2>
 
           {isLoadingReports ? (
-            <p style={{ color: '#aaa' }}>Loading reports...</p>
+            <CapybaraLoader scale={0.5} caption="Loading reports..." />
           ) : reports.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#888', backgroundColor: '#141414', borderRadius: '8px' }}>
               <CheckCircle size={32} color="#22c55e" style={{ marginBottom: '8px' }} />
@@ -396,7 +397,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ onNavigate }) =>
           </h2>
 
           {isLoadingProfiles ? (
-            <p style={{ color: '#aaa' }}>Loading users...</p>
+            <CapybaraLoader scale={0.5} caption="Loading users..." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {profiles.map((prof) => (

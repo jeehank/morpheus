@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Film, Flame, Star, Calendar, ChevronRight } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import { fetchTrendingMovies, fetchTopRatedMovies, fetchNowPlayingMovies, fetchUpcomingMovies } from '../services/tmdbApi';
 import type { Movie } from '../types';
 
@@ -18,19 +19,25 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
   const [topRated, setTopRated] = useState<Movie[]>([]);
   const [nowPlaying, setNowPlaying] = useState<Movie[]>([]);
   const [upcoming, setUpcoming] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadData() {
-      const [t, tr, np, up] = await Promise.all([
-        fetchTrendingMovies(),
-        fetchTopRatedMovies(),
-        fetchNowPlayingMovies(),
-        fetchUpcomingMovies()
-      ]);
-      setTrending(t);
-      setTopRated(tr);
-      setNowPlaying(np);
-      setUpcoming(up);
+      setIsLoading(true);
+      try {
+        const [t, tr, np, up] = await Promise.all([
+          fetchTrendingMovies(),
+          fetchTopRatedMovies(),
+          fetchNowPlayingMovies(),
+          fetchUpcomingMovies()
+        ]);
+        setTrending(t);
+        setTopRated(tr);
+        setNowPlaying(np);
+        setUpcoming(up);
+      } finally {
+        setIsLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -47,6 +54,11 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
           IMDb Cinema Hub
         </h1>
       </div>
+
+      {isLoading ? (
+        <CapybaraLoader caption="Connecting to TMDB & Loading Cinema Catalog..." />
+      ) : (
+        <>
 
       {/* IMDb Hero Carousel for Movies */}
       <ImdbHeroCarousel
@@ -135,6 +147,8 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
           ))}
         </div>
       </section>
+        </>
+      )}
 
     </div>
   );

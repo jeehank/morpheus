@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Flame, Star, Loader2 } from 'lucide-react';
+import { Gamepad2, Flame, Star } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
 import type { Game } from '../types';
 
@@ -49,10 +50,7 @@ export const GamesPage: React.FC<GamesPageProps> = ({
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <Loader2 size={40} className="animate-spin" />
-          <h2 style={{ color: '#fff', fontSize: '1.3rem', fontWeight: 700 }}>Connecting to IGDB Proxy...</h2>
-        </div>
+        <CapybaraLoader caption="Connecting to IGDB Proxy & Loading Games..." />
       ) : (
         <>
           {/* IGDB Hero Showcase */}

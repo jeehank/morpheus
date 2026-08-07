@@ -16,10 +16,9 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Fallback YouTube trailer search query embed URL if videoKey is not provided
   const embedUrl = videoKey
     ? `https://www.youtube-nocookie.com/embed/${videoKey}?autoplay=1`
-    : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(title + ' official trailer')}&autoplay=1`;
+    : null;
 
   return (
     <div style={{
@@ -64,20 +63,51 @@ export const TrailerModal: React.FC<TrailerModalProps> = ({
 
         {/* Video Frame */}
         <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', backgroundColor: '#000' }}>
-          <iframe
-            src={embedUrl}
-            title={`${title} Official Trailer`}
-            style={{
+          {embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={`${title} Official Trailer`}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                border: 'none'
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div style={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              border: 'none'
-            }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '16px',
+              padding: '20px',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: '#ccc', fontSize: '1rem' }}>Trailer key not found for {title}.</p>
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' official trailer')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  backgroundColor: 'var(--brand-orange)',
+                  color: '#000',
+                  fontWeight: 800,
+                  padding: '10px 20px',
+                  borderRadius: '20px',
+                  textDecoration: 'none'
+                }}
+              >
+                Search Trailer on YouTube ↗
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

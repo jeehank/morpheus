@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Star, Plus, Check, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Star, Plus, Check } from 'lucide-react';
 import { fetchUpcomingMovies, fetchNowPlayingMovies } from '../services/tmdbApi';
 import { fetchUpcomingGames, fetchPopularGames } from '../services/thegamesdbApi';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import type { Movie, Game, UserAccount } from '../types';
 import { getCurrentUser, updateUserWatchlist } from '../services/supabaseClient';
 
@@ -96,10 +97,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <Loader2 size={44} className="animate-spin" />
-          <h2 style={{ color: '#fff', fontSize: '1.3rem', fontWeight: 700 }}>Loading 2026 Release Schedule...</h2>
-        </div>
+        <CapybaraLoader caption="Loading 2026 Release Schedule..." />
       ) : (
         <>
           {/* Main Tab Switches: Upcoming vs Recently Released */}

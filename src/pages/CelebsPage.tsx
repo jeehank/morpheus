@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Flame, Loader2 } from 'lucide-react';
+import { User, Flame } from 'lucide-react';
 import { fetchPopularCelebs } from '../services/tmdbApi';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 
 interface CelebsPageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -49,10 +50,7 @@ export const CelebsPage: React.FC<CelebsPageProps> = () => {
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--brand-orange)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <Loader2 size={40} className="animate-spin" />
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700 }}>Fetching Popular Actor Profiles...</h3>
-        </div>
+        <CapybaraLoader caption="Fetching Popular Actor Profiles..." />
       ) : (
         <>
           {/* Section 1: Trending Actors */}

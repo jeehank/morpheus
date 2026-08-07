@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Plus, Check, Tv, User, Play, Eye, EyeOff, MoreVertical, Flag, Trash2, AlertTriangle } from 'lucide-react';
 import { fetchMovieDetails, fetchMovieWatchProviders, fetchMovieCredits, fetchMovieTrailerKey, getTmdbImageUrl } from '../services/tmdbApi';
-import { fetchGameDetails } from '../services/thegamesdbApi';
+import { fetchGameDetails, fetchGameTrailerKey } from '../services/thegamesdbApi';
 import {
   fetchReviews,
   addReview,
@@ -14,6 +14,7 @@ import {
 } from '../services/supabaseClient';
 import { TrailerModal } from '../components/TrailerModal';
 import { PlatformLogo } from '../components/PlatformLogos';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import type { Movie, Game, Review, UserAccount, WatchProvidersResult, CastMember } from '../types';
 
 interface MediaDetailPageProps {
@@ -72,6 +73,10 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
       } else {
         const item = await fetchGameDetails(id);
         setMediaItem(item);
+        if (item) {
+          const tKey = await fetchGameTrailerKey(item);
+          setTrailerKey(tKey);
+        }
       }
 
       // Fetch reviews from Supabase DB
@@ -93,8 +98,8 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 
   if (isLoading) {
     return (
-      <div className="container" style={{ padding: '60px 0', textAlign: 'center', color: '#aaa' }}>
-        <h2>Loading title details & reviews...</h2>
+      <div className="container" style={{ padding: '60px 0', textAlign: 'center' }}>
+        <CapybaraLoader caption="Loading title details & reviews..." />
       </div>
     );
   }
@@ -258,20 +263,51 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 
         {/* Embedded YouTube Official Trailer Player directly on page */}
         <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#000' }}>
-          <iframe
-            src={trailerKey
-              ? `https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=0&rel=0`
-              : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(title + ' official trailer')}&autoplay=0`
-            }
-            title={`${title} Official Trailer`}
-            style={{
+          {trailerKey ? (
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=0&rel=0`}
+              title={`${title} Official Trailer`}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none'
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div style={{
               width: '100%',
               height: '100%',
-              border: 'none'
-            }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              backgroundColor: '#111',
+              color: '#ccc'
+            }}>
+              <p style={{ fontSize: '1rem', fontWeight: 600 }}>No trailer key available directly</p>
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' official trailer')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  backgroundColor: 'var(--brand-orange)',
+                  color: '#000',
+                  fontWeight: 800,
+                  padding: '10px 20px',
+                  borderRadius: '20px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Play size={16} fill="#000" /> Watch Trailer on YouTube ↗
+              </a>
+            </div>
+          )}
 
           <button
             onClick={handleToggleWatchlist}
@@ -320,23 +356,48 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
               <span>Official Video Trailer</span>
             </h2>
             <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid #2e2e2e' }}>
-              <iframe
-                src={trailerKey
-                  ? `https://www.youtube-nocookie.com/embed/${trailerKey}`
-                  : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(title + ' official trailer')}`
-                }
-                title={`Official Trailer: ${title}`}
-                style={{
+              {trailerKey ? (
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${trailerKey}`}
+                  title={`Official Trailer: ${title}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <div style={{
                   position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  border: 'none'
-                }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px'
+                }}>
+                  <a
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' official trailer')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      backgroundColor: 'var(--brand-orange)',
+                      color: '#000',
+                      fontWeight: 800,
+                      padding: '10px 20px',
+                      borderRadius: '20px',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    Watch Trailer on YouTube ↗
+                  </a>
+                </div>
+              )}
             </div>
           </section>
 

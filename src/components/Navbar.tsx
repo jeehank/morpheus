@@ -3,6 +3,7 @@ import { Menu, Search, Bookmark, User, Globe, LogOut, Library } from 'lucide-rea
 import { getCurrentUser, logoutUser } from '../services/supabaseClient';
 import { searchMovies, setTmdbLanguage } from '../services/tmdbApi';
 import { searchGames } from '../services/thegamesdbApi';
+import { CapybaraLoader } from './CapybaraLoader';
 import type { UserAccount, MediaItem } from '../types';
 
 interface NavbarProps {
@@ -234,9 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               overflowY: 'auto'
             }}>
               {isLoadingSearch ? (
-                <div style={{ padding: '16px', textAlign: 'center', color: '#aaa', fontSize: '0.85rem' }}>
-                  Searching database...
-                </div>
+                <CapybaraLoader scale={0.4} caption="Searching catalog..." />
               ) : results.length === 0 ? (
                 <div style={{ padding: '16px', textAlign: 'center', color: '#aaa', fontSize: '0.85rem' }}>
                   No titles found for "{query}"
