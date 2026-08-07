@@ -80,6 +80,13 @@ export interface Review {
   headline: string;
   content: string;
   isSpoiler?: boolean;
+  categoryRatings?: {
+    excitement: number;
+    suspense: number;
+    thrill: number;
+    storyline: number;
+    visuals: number;
+  };
   createdAt: string;
   userIp?: string;
 }

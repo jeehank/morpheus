@@ -414,7 +414,8 @@ export async function addReview(
   rating: number,
   headline: string,
   content: string,
-  isSpoiler: boolean = false
+  isSpoiler: boolean = false,
+  categoryRatings?: { excitement: number; suspense: number; thrill: number; storyline: number; visuals: number }
 ): Promise<{ success: boolean; review?: Review; error?: string }> {
   const currentUser = getCurrentUser();
   if (!currentUser) {
@@ -425,6 +426,14 @@ export async function addReview(
     return { success: false, error: 'Your account is banned from posting reviews.' };
   }
 
+  // Email verification check — block unverified users
+  if (!currentUser.isEmailVerified) {
+    return {
+      success: false,
+      error: 'Your email is not verified. Please verify your email address in Account Settings before posting reviews.'
+    };
+  }
+
   // Profanity check
   if (containsProfanity(headline) || containsProfanity(content)) {
     return {
@@ -433,7 +442,7 @@ export async function addReview(
     };
   }
 
-  const reviewRow = {
+  const reviewRow: any = {
     media_id: String(mediaId),
     media_type: mediaType,
     media_title: mediaTitle,
@@ -446,6 +455,11 @@ export async function addReview(
     is_spoiler: isSpoiler,
     user_ip: currentUser.ipAddress
   };
+
+  // Include category ratings if provided
+  if (categoryRatings) {
+    reviewRow.category_ratings = JSON.stringify(categoryRatings);
+  }
 
   try {
     const { data, error } = await supabase.from('reviews').insert(reviewRow).select().single();
@@ -468,6 +482,7 @@ export async function addReview(
       headline,
       content,
       isSpoiler,
+      categoryRatings,
       createdAt: new Date().toISOString(),
       userIp: currentUser.ipAddress
     };

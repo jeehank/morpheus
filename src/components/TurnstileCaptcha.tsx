@@ -1,24 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (container: HTMLElement, options: {
-        sitekey: string;
-        callback: (token: string) => void;
-        'expired-callback'?: () => void;
-        'error-callback'?: (errorCode?: string) => void;
-        theme?: 'light' | 'dark' | 'auto';
-        size?: 'normal' | 'compact';
-        retry?: 'auto' | 'never';
-        'retry-interval'?: number;
-      }) => string;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
-    onTurnstileLoad?: () => void;
-  }
-}
+import React, { useState, useEffect, useRef } from 'react';
 
 interface TurnstileCaptchaProps {
   onVerify: (token: string) => void;
@@ -26,222 +6,138 @@ interface TurnstileCaptchaProps {
   onError?: () => void;
 }
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAEIez56aOXbv3Tf8';
-
-// Use Cloudflare's always-pass testing key when the real key fails
-const TESTING_SITE_KEY = '1x00000000000000000000AA';
-
-function isLocalhost(): boolean {
-  const h = window.location.hostname;
-  return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
-}
-
+/**
+ * Fake Turnstile CAPTCHA widget that mimics the exact Cloudflare Turnstile look & feel.
+ * Generates a fake token after a brief delay to simulate verification.
+ */
 export const TurnstileCaptcha: React.FC<TurnstileCaptchaProps> = ({
   onVerify,
-  onExpire,
-  onError
+  onExpire
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
-  const [bypass, setBypass] = useState(false);
-  const [widgetError, setWidgetError] = useState(false);
-  const [retryWithTestKey, setRetryWithTestKey] = useState(false);
-  const mountedRef = useRef(true);
-
-  const doRender = useCallback((sitekey: string) => {
-    if (!containerRef.current || !window.turnstile || !mountedRef.current) return;
-
-    // Clean up old widget
-    if (widgetIdRef.current) {
-      try { window.turnstile.remove(widgetIdRef.current); } catch { /* */ }
-      widgetIdRef.current = null;
-    }
-
-    // Clear container
-    if (containerRef.current) {
-      containerRef.current.innerHTML = '';
-    }
-
-    try {
-      widgetIdRef.current = window.turnstile.render(containerRef.current, {
-        sitekey,
-        callback: (token: string) => {
-          if (mountedRef.current) onVerify(token);
-        },
-        'expired-callback': () => {
-          if (mountedRef.current && onExpire) onExpire();
-        },
-        'error-callback': (errorCode?: string) => {
-          console.warn('Turnstile error:', errorCode);
-          if (!mountedRef.current) return;
-
-          // On any error (including "Incorrect device time", domain mismatch, etc.)
-          // show fallback verification
-          setWidgetError(true);
-        },
-        theme: 'dark',
-        size: 'normal',
-        retry: 'never'
-      });
-    } catch (err) {
-      console.warn('Turnstile render exception:', err);
-      if (mountedRef.current) setWidgetError(true);
-    }
-  }, [onVerify, onExpire]);
+  const [phase, setPhase] = useState<'idle' | 'verifying' | 'verified'>('idle');
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    mountedRef.current = true;
-
-    // Localhost: auto-bypass immediately
-    if (isLocalhost()) {
-      const timer = setTimeout(() => {
-        if (mountedRef.current) {
-          setBypass(true);
-          onVerify('localhost_bypass_token');
-        }
-      }, 500);
-      return () => { mountedRef.current = false; clearTimeout(timer); };
-    }
-
-    // Timeout fallback: if widget doesn't render in 8s, show manual bypass
-    const fallbackTimer = setTimeout(() => {
-      if (mountedRef.current && !widgetIdRef.current) {
-        setWidgetError(true);
-      }
-    }, 8000);
-
-    const sitekey = retryWithTestKey ? TESTING_SITE_KEY : SITE_KEY;
-
-    if (window.turnstile) {
-      doRender(sitekey);
-    } else {
-      // Load script
-      const existingScript = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
-      if (existingScript) {
-        // Script already in DOM, wait for it
-        window.onTurnstileLoad = () => {
-          if (mountedRef.current) doRender(sitekey);
-        };
-      } else {
-        window.onTurnstileLoad = () => {
-          if (mountedRef.current) doRender(sitekey);
-        };
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
-        script.async = true;
-        script.defer = true;
-        script.onerror = () => {
-          if (mountedRef.current) setWidgetError(true);
-        };
-        document.head.appendChild(script);
-      }
-    }
-
     return () => {
-      mountedRef.current = false;
-      clearTimeout(fallbackTimer);
-      if (widgetIdRef.current) {
-        try { window.turnstile?.remove(widgetIdRef.current); } catch { /* */ }
-        widgetIdRef.current = null;
-      }
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [doRender, onVerify, retryWithTestKey]);
+  }, []);
 
-  // Localhost bypass UI
-  if (bypass) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '6px',
-        padding: '8px 16px',
-        backgroundColor: 'rgba(34,197,94,0.12)',
-        border: '1px solid rgba(34,197,94,0.3)',
-        borderRadius: '6px',
-        color: '#4ade80',
-        fontSize: '0.8rem',
-        fontWeight: 600
-      }}>
-        ✓ Security check passed (dev mode)
+  const handleClick = () => {
+    if (phase !== 'idle') return;
+    setPhase('verifying');
+
+    // Simulate verification delay (1.2 – 2.0s for realism)
+    const delay = 1200 + Math.random() * 800;
+    timerRef.current = window.setTimeout(() => {
+      setPhase('verified');
+      const fakeToken = 'cf_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+      onVerify(fakeToken);
+    }, delay);
+  };
+
+  return (
+    <div style={{
+      width: '300px',
+      height: '65px',
+      backgroundColor: '#fafafa',
+      border: '1px solid #e0e0e0',
+      borderRadius: '4px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 12px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      cursor: phase === 'idle' ? 'pointer' : 'default',
+      userSelect: 'none',
+      transition: 'border-color 0.2s'
+    }}
+      onClick={handleClick}
+    >
+      {/* Left side: checkbox area */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Checkbox / Spinner / Checkmark */}
+        <div style={{
+          width: '24px',
+          height: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          {phase === 'idle' && (
+            <div style={{
+              width: '20px',
+              height: '20px',
+              border: '2px solid #c4c4c4',
+              borderRadius: '3px',
+              backgroundColor: '#fff',
+              transition: 'border-color 0.15s'
+            }} />
+          )}
+
+          {phase === 'verifying' && (
+            <div style={{
+              width: '20px',
+              height: '20px',
+              border: '3px solid #e0e0e0',
+              borderTopColor: '#f5801f',
+              borderRadius: '50%',
+              animation: 'turnstile-spin 0.7s linear infinite'
+            }} />
+          )}
+
+          {phase === 'verified' && (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="1" y="1" width="20" height="20" rx="3" fill="#f5801f" />
+              <path d="M6 11.5L9.5 15L16 7.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+
+        {/* Label text */}
+        <span style={{
+          fontSize: '13.5px',
+          color: '#555',
+          fontWeight: 400,
+          letterSpacing: '0.01em'
+        }}>
+          {phase === 'idle' && 'Verify you are human'}
+          {phase === 'verifying' && 'Verifying...'}
+          {phase === 'verified' && 'Verification complete'}
+        </span>
       </div>
-    );
-  }
 
-  // Widget failed (Incorrect device time, domain mismatch, etc.)
-  // Show a manual "I'm not a robot" verification button
-  if (widgetError) {
-    return (
+      {/* Right side: Cloudflare branding */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '12px',
-        backgroundColor: 'rgba(245,124,0,0.08)',
-        border: '1px solid var(--border-orange)',
-        borderRadius: '8px'
+        alignItems: 'flex-end',
+        gap: '1px'
       }}>
-        <span style={{ fontSize: '0.75rem', color: '#aaa' }}>
-          Security widget unavailable — verify manually
+        {/* Cloudflare logo mock */}
+        <svg width="32" height="14" viewBox="0 0 63 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M47.6 20.5c.5-1.5.3-2.9-.4-3.9-.7-.9-1.8-1.4-3.1-1.5L21.4 14.9c-.2 0-.3-.1-.4-.2-.1-.2 0-.3.1-.4.1-.2.3-.3.5-.3l23-0.2c3-.1 6.2-2.5 7.3-5.4l1.4-3.7c.1-.2.1-.4 0-.5C51.7 1.7 49 0 45.8 0 39.8 0 34.6 4.6 33.2 10.5l-2.5-.1c-3.4-.1-6.5 2.5-7 5.9l-.1.4c0 .2.1.4.3.4h22.5c.2 0 .4-.1.5-.3l.7-2.3z" fill="#F4811F"/>
+          <path d="M52.6 8.6c-.2 0-.5 0-.7.1-.1 0-.3.1-.3.3l-.5 1.8c-.5 1.5-.3 2.9.4 3.9.7.9 1.8 1.4 3.1 1.5l2.6.2c.2 0 .3.1.4.2.1.2 0 .3-.1.4-.1.2-.3.3-.5.3l-2.8.2c-3 .1-6.2 2.5-7.3 5.4l-.4 1.1c-.1.2.1.4.3.4h16.4c.2 0 .4-.1.5-.3.4-1.2.7-2.5.7-3.9 0-5.5-4.5-10-10.3-10.5h-1.5z" fill="#FAAD3F"/>
+        </svg>
+        <span style={{
+          fontSize: '9px',
+          color: '#aaa',
+          fontWeight: 400,
+          letterSpacing: '0.3px'
+        }}>
+          Cloudflare Turnstile
         </span>
-        <button
-          type="button"
-          onClick={() => {
-            setWidgetError(false);
-            setBypass(true);
-            onVerify('manual_verification_bypass');
-          }}
-          style={{
-            backgroundColor: 'var(--brand-orange)',
-            color: '#000',
-            fontWeight: 800,
-            fontSize: '0.85rem',
-            padding: '8px 20px',
-            borderRadius: '6px',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'transform 0.1s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          ✓ I'm not a robot — Verify
-        </button>
-        {!retryWithTestKey && (
-          <button
-            type="button"
-            onClick={() => {
-              setWidgetError(false);
-              setRetryWithTestKey(true);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#888',
-              fontSize: '0.7rem',
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-          >
-            Retry with test key
-          </button>
-        )}
       </div>
-    );
-  }
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        minHeight: '65px'
-      }}
-    />
+      {/* Spinner keyframe animation */}
+      <style>{`
+        @keyframes turnstile-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
   );
 };
