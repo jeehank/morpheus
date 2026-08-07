@@ -30,6 +30,9 @@ export function getTmdbImageUrl(path: string | null, size: 'w185' | 'w500' | 'or
   return `${TMDB_IMAGE_BASE_URL}${size}${path}`;
 }
 
+const tmdbCacheMap = new Map<string, { data: any; timestamp: number }>();
+const TMDB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 async function fetchFromTmdb<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const queryParams = new URLSearchParams({
     api_key: TMDB_API_KEY,
@@ -38,13 +41,21 @@ async function fetchFromTmdb<T>(endpoint: string, params: Record<string, string>
   });
 
   const url = `${BASE_URL}${endpoint}?${queryParams.toString()}`;
+  const now = Date.now();
+  const cached = tmdbCacheMap.get(url);
+  if (cached && (now - cached.timestamp < TMDB_CACHE_TTL)) {
+    return cached.data as T;
+  }
+
   const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error(`TMDB API Error: ${response.statusText}`);
   }
   
-  return response.json();
+  const data = await response.json();
+  tmdbCacheMap.set(url, { data, timestamp: now });
+  return data;
 }
 
 export async function fetchTrendingMovies(): Promise<Movie[]> {

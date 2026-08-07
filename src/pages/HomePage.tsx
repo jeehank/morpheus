@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { ImdbHeroCarousel } from '../components/ImdbHeroCarousel';
 import { MediaCard } from '../components/MediaCard';
+import { CapybaraLoader } from '../components/CapybaraLoader';
 import { fetchTrendingMovies, fetchTopRatedMovies } from '../services/tmdbApi';
 import { fetchGamesFromIGDB } from '../services/thegamesdbApi';
 import type { Movie, Game } from '../types';
@@ -21,9 +22,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularGames, setPopularGames] = useState<Game[]>([]);
   const [trendingGames, setTrendingGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadAllData() {
+      setIsLoading(true);
       try {
         const [moviesTrend, moviesTop, games] = await Promise.all([
           fetchTrendingMovies(),
@@ -37,6 +40,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         setTrendingGames(games.slice(10, 20));
       } catch (err) {
         console.error('Error loading homepage media:', err);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -51,15 +56,22 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="container" style={{ paddingBottom: '60px' }}>
       
-      {/* IMDb Hero Carousel */}
-      <ImdbHeroCarousel 
-        featuredItems={heroItems}
-        onNavigate={onNavigate}
-        onOpenAuth={onOpenAuth}
-      />
+      {isLoading ? (
+        <CapybaraLoader caption="Loading Home Fusion..." />
+      ) : (
+        <>
+          {/* IMDb Hero Carousel */}
+          <div className="fade-in-section stagger-1">
+            <ImdbHeroCarousel 
+              featuredItems={heroItems}
+              onNavigate={onNavigate}
+              onOpenAuth={onOpenAuth}
+            />
+          </div>
 
       {/* Daily AI Recommendation Prompt Banner */}
       <div 
+        className="fade-in-section stagger-2"
         onClick={onOpenAiChat}
         style={{
           background: 'linear-gradient(135deg, #1f1f1f, #2a1b10)',
@@ -113,7 +125,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* Trending Movies Section */}
-      <section style={{ marginBottom: '40px' }}>
+      <section className="fade-in-section stagger-3" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <span>Trending Movies & Shows</span>
@@ -140,7 +152,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* Top 250 Movies Section with Arrow Button */}
-      <section id="section-top250" style={{ marginBottom: '40px' }}>
+      <section id="section-top250" className="fade-in-section stagger-4" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <span>Top Rated 250 Movies</span>
@@ -177,7 +189,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* Popular Video Games Section (IGDB Proxy) */}
-      <section id="section-games" style={{ marginBottom: '40px' }}>
+      <section id="section-games" className="fade-in-section stagger-5" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <span>Top Video Games (IGDB)</span>
@@ -204,7 +216,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* Mixed Top Rated Grid */}
-      <section style={{ marginBottom: '40px' }}>
+      <section className="fade-in-section stagger-6" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <span>Fan Favorites & Top Rated</span>
@@ -222,6 +234,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           ))}
         </div>
       </section>
+        </>
+      )}
 
     </div>
   );
