@@ -133,7 +133,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         boxShadow: '0 12px 40px rgba(0,0,0,0.9)',
         animation: 'fadeIn 0.2s ease-out'
       }}>
-        
+
         {/* Header */}
         <div style={{
           backgroundColor: '#141414',
@@ -176,7 +176,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         <div style={{ padding: '24px' }}>
-          
+
           {/* Error Message banner */}
           {errorMsg && (
             <div style={{
@@ -219,7 +219,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', display: 'block', marginBottom: '6px' }}>
-                  Email or Username (e.g. morpheus for Admin)
+                  Email or Username
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
