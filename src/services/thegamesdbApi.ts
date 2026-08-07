@@ -144,7 +144,7 @@ export async function fetchGameTrailerKey(item: Game | string | number): Promise
       if (nameLower.includes(title) || title.includes(nameLower)) return key;
     }
   } else {
-    const game = await fetchGameDetails(item);
+    const game = await fetchGameDetails(item as string | number);
     if (game) return fetchGameTrailerKey(game);
   }
   return null;
