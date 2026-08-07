@@ -64,7 +64,20 @@ export async function registerUser(
 
   const currentIp = await getClientIp();
 
-  // Strict IP enforcement: Check Supabase profiles table for existing account registered from same IP
+  // Strict IP enforcement: Check local storage registry first
+  try {
+    const ipRegistry: Record<string, string> = JSON.parse(localStorage.getItem('morpheus_ip_accounts') || '{}');
+    if (ipRegistry[currentIp] && ipRegistry[currentIp].toLowerCase() !== email.toLowerCase()) {
+      return {
+        success: false,
+        error: `Registration blocked: An account (${ipRegistry[currentIp]}) has already been registered from IP address ${currentIp}. Only 1 account per IP address is permitted.`
+      };
+    }
+  } catch {
+    /* fallback to DB */
+  }
+
+  // Check Supabase profiles table for existing account registered from same IP
   try {
     const { data: existingIpProfiles } = await supabase
       .from('profiles')
@@ -110,6 +123,15 @@ export async function registerUser(
       is_banned: false,
       ip_address: currentIp
     });
+
+    // Record IP to local registry
+    try {
+      const ipRegistry: Record<string, string> = JSON.parse(localStorage.getItem('morpheus_ip_accounts') || '{}');
+      ipRegistry[currentIp] = email;
+      localStorage.setItem('morpheus_ip_accounts', JSON.stringify(ipRegistry));
+    } catch {
+      /* ignore */
+    }
 
     const isVerified = authData.user?.email_confirmed_at ? true : false;
 

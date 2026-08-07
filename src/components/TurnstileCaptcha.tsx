@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 interface TurnstileCaptchaProps {
   onVerify: (token: string) => void;
   onExpire?: () => void;
-  onError?: () => void;
 }
 
 /**
@@ -33,6 +32,14 @@ export const TurnstileCaptcha: React.FC<TurnstileCaptchaProps> = ({
       setPhase('verified');
       const fakeToken = 'cf_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
       onVerify(fakeToken);
+
+      // Auto-expire after 5 minutes if onExpire provided
+      if (onExpire) {
+        window.setTimeout(() => {
+          setPhase('idle');
+          onExpire();
+        }, 5 * 60 * 1000);
+      }
     }, delay);
   };
 
