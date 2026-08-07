@@ -61,14 +61,16 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
         <>
 
       {/* IMDb Hero Carousel for Movies */}
+      <div className="fade-in-section stagger-1">
       <ImdbHeroCarousel
         featuredItems={trending.slice(0, 5)}
         onNavigate={onNavigate}
         onOpenAuth={onOpenAuth}
       />
+      </div>
 
       {/* Most Popular Movies */}
-      <section style={{ marginBottom: '40px' }}>
+      <section className="fade-in-section stagger-2" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <Flame color="var(--brand-orange)" size={24} />
@@ -84,7 +86,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
       </section>
 
       {/* Top 250 Movies with Arrow Button */}
-      <section id="section-top250" style={{ marginBottom: '40px' }}>
+      <section id="section-top250" className="fade-in-section stagger-3" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <Star color="var(--star-yellow)" fill="var(--star-yellow)" size={22} />
@@ -116,7 +118,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
       </section>
 
       {/* In Theaters Now */}
-      <section style={{ marginBottom: '40px' }}>
+      <section className="fade-in-section stagger-4" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <Film color="var(--brand-orange)" size={22} />
@@ -131,7 +133,7 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({
       </section>
 
       {/* Upcoming Releases */}
-      <section style={{ marginBottom: '40px' }}>
+      <section className="fade-in-section stagger-5" style={{ marginBottom: '40px' }}>
         <div className="section-heading">
           <div className="section-title">
             <Calendar color="var(--brand-orange)" size={22} />

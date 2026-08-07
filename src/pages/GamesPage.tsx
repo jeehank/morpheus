@@ -54,14 +54,16 @@ export const GamesPage: React.FC<GamesPageProps> = ({
       ) : (
         <>
           {/* IGDB Hero Showcase */}
+          <div className="fade-in-section stagger-1">
           <ImdbHeroCarousel
             featuredItems={games.slice(0, 5)}
             onNavigate={onNavigate}
             onOpenAuth={onOpenAuth}
           />
+          </div>
 
           {/* Popular Games Row */}
-          <section style={{ marginBottom: '40px' }}>
+          <section className="fade-in-section stagger-2" style={{ marginBottom: '40px' }}>
             <div className="section-heading">
               <div className="section-title">
                 <Flame color="var(--brand-orange)" size={24} />
@@ -77,7 +79,7 @@ export const GamesPage: React.FC<GamesPageProps> = ({
           </section>
 
           {/* Top Rated Games */}
-          <section style={{ marginBottom: '40px' }}>
+          <section className="fade-in-section stagger-3" style={{ marginBottom: '40px' }}>
             <div className="section-heading">
               <div className="section-title">
                 <Star color="var(--star-yellow)" fill="var(--star-yellow)" size={22} />
@@ -92,7 +94,7 @@ export const GamesPage: React.FC<GamesPageProps> = ({
           </section>
 
           {/* Upcoming Game Releases */}
-          <section style={{ marginBottom: '40px' }}>
+          <section className="fade-in-section stagger-4" style={{ marginBottom: '40px' }}>
             <div className="section-heading">
               <div className="section-title">
                 <Gamepad2 color="var(--brand-orange)" size={22} />

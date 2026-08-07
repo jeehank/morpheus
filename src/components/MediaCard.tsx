@@ -47,6 +47,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
 
   return (
     <div 
+      className="animate-fade-in"
       style={{
         width: '180px',
         minWidth: '180px',
