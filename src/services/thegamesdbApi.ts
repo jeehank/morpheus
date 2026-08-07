@@ -50,9 +50,20 @@ export function gameMatchesGenre(game: Game, genreName: string): boolean {
   return gameGenres.some(g => g.includes(target));
 }
 
-export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = true): Promise<Game[]> {
+let igdbGamesCache: { data: Game[]; timestamp: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = false): Promise<Game[]> {
+  const cacheKey = JSON.stringify(filters || {});
+  const now = Date.now();
+  
+  // Return cached games instantly if valid
+  if (!filters && igdbGamesCache && (now - igdbGamesCache.timestamp < CACHE_TTL)) {
+    return igdbGamesCache.data;
+  }
+
   try {
-    const offsets = extraPages ? [0, 60, 120, 180, 240, 300, 360, 420] : [0, 60, 120];
+    const offsets = extraPages ? [0, 60, 120, 180] : [0, 60];
     const requests = offsets.map(offset =>
       fetch(`${IGDB_PROXY_BASE}/games`, {
         method: "POST",
@@ -70,7 +81,12 @@ export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = tr
     const seen = new Map();
     games.forEach(g => { if (!seen.has(g.id)) seen.set(g.id, g); });
     const formatted = Array.from(seen.values()).map(g => formatIgdbGame(g));
-    if (formatted.length > 0) return formatted;
+    if (formatted.length > 0) {
+      if (!filters) {
+        igdbGamesCache = { data: formatted, timestamp: Date.now() };
+      }
+      return formatted;
+    }
     return getFallbackGames();
   } catch (err) {
     console.warn('IGDB Proxy fetch error, using fallbacks:', err);
