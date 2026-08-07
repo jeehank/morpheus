@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;700;800;900&display=swap');
 
 :root {
   --bg-main: #121212;
@@ -22,6 +22,7 @@
   --border-orange: rgba(245, 124, 0, 0.4);
 
   --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Orbitron', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -39,6 +40,21 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Orbitron Bold Typography for Headings, Titles, Buttons, and Highlights */
+h1, h2, h3, h4, h5, h6,
+b, strong,
+.font-bold,
+.section-title,
+.badge-orange,
+.wordmark h1,
+.panel__title,
+.btn,
+button.btn--primary,
+button.btn--outline {
+  font-family: var(--font-heading) !important;
+  letter-spacing: 0.02em;
 }
 
 a {
@@ -91,6 +107,7 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-heading) !important;
 }
 
 /* Section Header IMDb style */
@@ -110,6 +127,7 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-heading) !important;
 }
 
 .section-subtitle {
@@ -131,12 +149,31 @@ input, select, textarea {
   height: 6px;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Staggered Fade-In Animations */
+@keyframes fadeInUpStagger {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+.fade-in-section {
+  opacity: 0;
+  animation: fadeInUpStagger 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.12s; }
+.stagger-3 { animation-delay: 0.20s; }
+.stagger-4 { animation-delay: 0.28s; }
+.stagger-5 { animation-delay: 0.36s; }
+.stagger-6 { animation-delay: 0.44s; }
+
+.animate-fade-in {
+  animation: fadeInUpStagger 0.4s ease-out forwards;
+}
+
