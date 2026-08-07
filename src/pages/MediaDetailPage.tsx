@@ -43,6 +43,13 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
 
   // Review Form State
   const [userRating, setUserRating] = useState(9);
+  const [categoryRatings, setCategoryRatings] = useState({
+    excitement: 5,
+    suspense: 4,
+    thrill: 4,
+    storyline: 5,
+    visuals: 5
+  });
   const [reviewHeadline, setReviewHeadline] = useState('');
   const [reviewContent, setReviewContent] = useState('');
   const [isSpoilerInput, setIsSpoilerInput] = useState(false);
@@ -151,7 +158,7 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
     }
 
     setIsSubmittingReview(true);
-    const res = await addReview(id, type, title, userRating, reviewHeadline, reviewContent, isSpoilerInput);
+    const res = await addReview(id, type, title, userRating, reviewHeadline, reviewContent, isSpoilerInput, categoryRatings);
     setIsSubmittingReview(false);
 
     if (!res.success) {
@@ -461,8 +468,19 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                     Sign In / Register
                   </button>
                 </div>
+              ) : !currentUser.isEmailVerified ? (
+                <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>
+                  <AlertTriangle size={32} color="#ef4444" style={{ marginBottom: '8px' }} />
+                  <h4 style={{ color: '#ef4444', fontWeight: 800, fontSize: '1rem', marginBottom: '6px' }}>Email Verification Required</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '14px' }}>
+                    Your email address (<strong>{currentUser.email}</strong>) is not verified yet. Please verify your email first before posting reviews.
+                  </p>
+                  <button onClick={() => onNavigate('account')} style={{ backgroundColor: 'var(--brand-orange)', color: '#000', fontWeight: 800, padding: '8px 20px', borderRadius: '6px', fontSize: '0.85rem' }}>
+                    Go to Account Settings to Verify Email
+                  </button>
+                </div>
               ) : (
-                <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {reviewError && (
                     <div style={{ color: '#ef4444', fontSize: '0.85rem', backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', padding: '10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <AlertTriangle size={18} />
@@ -471,13 +489,13 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                   )}
                   {reviewSuccess && (
                     <div style={{ color: '#22c55e', fontSize: '0.85rem', backgroundColor: 'rgba(34,197,94,0.1)', padding: '8px', borderRadius: '4px' }}>
-                      Review submitted successfully to Supabase!
+                      Review submitted successfully!
                     </div>
                   )}
 
-                  {/* Rating Selector */}
+                  {/* Overall Rating Selector */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label style={{ fontSize: '0.85rem', color: '#ccc', fontWeight: 600 }}>Your Rating:</label>
+                    <label style={{ fontSize: '0.85rem', color: '#ccc', fontWeight: 600 }}>Overall Rating:</label>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => (
                         <button
@@ -496,6 +514,42 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                         >
                           {val}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 5-Category Star Breakdown Rating Selector */}
+                  <div style={{ backgroundColor: '#121212', border: '1px solid #2a2a2a', padding: '14px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--brand-orange)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Category Star Breakdown (1 – 5 Stars):
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                      {(['excitement', 'suspense', 'thrill', 'storyline', 'visuals'] as const).map(cat => (
+                        <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#aaa', textTransform: 'capitalize', fontWeight: 600 }}>
+                            {cat}
+                          </span>
+                          <div style={{ display: 'flex', gap: '3px' }}>
+                            {[1, 2, 3, 4, 5].map(starVal => (
+                              <button
+                                type="button"
+                                key={starVal}
+                                onClick={() => setCategoryRatings(prev => ({ ...prev, [cat]: starVal }))}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '1px',
+                                  color: categoryRatings[cat] >= starVal ? '#f59e0b' : '#444',
+                                  fontSize: '1rem',
+                                  lineHeight: 1
+                                }}
+                              >
+                                ★
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -643,6 +697,20 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--brand-orange)', marginBottom: '6px' }}>
                         {rev.headline}
                       </div>
+
+                      {/* Category Star Breakdown Display */}
+                      {rev.categoryRatings && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', margin: '8px 0 10px 0', backgroundColor: '#121212', padding: '8px 12px', borderRadius: '6px', border: '1px solid #282828' }}>
+                          {(Object.keys(rev.categoryRatings) as Array<keyof typeof rev.categoryRatings>).map(catKey => (
+                            <div key={catKey} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: '#bbb' }}>
+                              <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{catKey}:</span>
+                              <span style={{ color: '#f59e0b', fontWeight: 700 }}>
+                                {'★'.repeat(rev.categoryRatings![catKey])}{'☆'.repeat(5 - rev.categoryRatings![catKey])}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Review Content with Spoiler Blur */}
                       {rev.isSpoiler && !isRevealed ? (

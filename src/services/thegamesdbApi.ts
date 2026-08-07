@@ -54,7 +54,6 @@ let igdbGamesCache: { data: Game[]; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function fetchGamesFromIGDB(filters?: any, extraPages: boolean = false): Promise<Game[]> {
-  const cacheKey = JSON.stringify(filters || {});
   const now = Date.now();
   
   // Return cached games instantly if valid
