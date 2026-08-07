@@ -395,6 +395,8 @@ export async function createModeratorAccount(
 
 // 4. Supabase PostgreSQL Persistent Reviews API
 export async function fetchReviews(mediaId: string | number, mediaType: 'movie' | 'game'): Promise<Review[]> {
+  const localRevs = getStoredReviews().filter(r => String(r.mediaId) === String(mediaId) && r.mediaType === mediaType);
+
   try {
     const { data, error } = await supabase
       .from('reviews')
@@ -404,28 +406,47 @@ export async function fetchReviews(mediaId: string | number, mediaType: 'movie' 
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      return getStoredReviews().filter(r => String(r.mediaId) === String(mediaId) && r.mediaType === mediaType);
+      return localRevs;
     }
 
-    return data.map(r => ({
-      id: r.id,
-      mediaId: r.media_id,
-      mediaType: r.media_type,
-      mediaTitle: r.media_title,
-      userId: r.user_id,
-      userName: r.user_name,
-      userEmail: r.user_email,
-      isVerifiedEmail: true,
-      isGoogleUser: false,
-      rating: Number(r.rating),
-      headline: r.headline,
-      content: r.content,
-      isSpoiler: Boolean(r.is_spoiler),
-      createdAt: r.created_at,
-      userIp: r.user_ip
-    }));
+    const dbRevs: Review[] = data.map(r => {
+      let catRatings = undefined;
+      if (r.category_ratings) {
+        try {
+          catRatings = typeof r.category_ratings === 'string' ? JSON.parse(r.category_ratings) : r.category_ratings;
+        } catch { /* ignore */ }
+      }
+
+      return {
+        id: String(r.id),
+        mediaId: r.media_id,
+        mediaType: r.media_type,
+        mediaTitle: r.media_title,
+        userId: r.user_id,
+        userName: r.user_name || 'Anonymous User',
+        userEmail: r.user_email || '',
+        isVerifiedEmail: true,
+        isGoogleUser: false,
+        rating: Number(r.rating),
+        headline: r.headline,
+        content: r.content,
+        isSpoiler: Boolean(r.is_spoiler),
+        categoryRatings: catRatings,
+        createdAt: r.created_at,
+        userIp: r.user_ip
+      };
+    });
+
+    // Combine DB reviews + local reviews (prevent duplicates)
+    const combined = [...dbRevs];
+    for (const lr of localRevs) {
+      if (!combined.some(c => String(c.id) === String(lr.id))) {
+        combined.push(lr);
+      }
+    }
+    return combined;
   } catch {
-    return getStoredReviews().filter(r => String(r.mediaId) === String(mediaId) && r.mediaType === mediaType);
+    return localRevs;
   }
 }
 
@@ -456,14 +477,15 @@ export async function addReview(
     };
   }
 
-  // One review per user per title check
-  const localRevs = getStoredReviews();
-  const existingLocalReview = localRevs.find(
+  // Check existing reviews in local storage and DB
+  const existingLocal = getStoredReviews().find(
     r => String(r.mediaId) === String(mediaId) &&
          r.mediaType === mediaType &&
-         (r.userId === currentUser.id || r.userEmail.toLowerCase() === currentUser.email.toLowerCase())
+         ((r.userId && r.userId === currentUser.id) ||
+          (r.userEmail && r.userEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim()))
   );
-  if (existingLocalReview) {
+
+  if (existingLocal) {
     return {
       success: false,
       error: 'You have already posted a review for this title. Only 1 review per title is allowed.'
@@ -473,16 +495,21 @@ export async function addReview(
   try {
     const { data: existingDbRevs } = await supabase
       .from('reviews')
-      .select('id')
+      .select('id, user_id, user_email')
       .eq('media_id', String(mediaId))
-      .eq('media_type', mediaType)
-      .eq('user_id', currentUser.id);
+      .eq('media_type', mediaType);
 
     if (existingDbRevs && existingDbRevs.length > 0) {
-      return {
-        success: false,
-        error: 'You have already posted a review for this title. Only 1 review per title is allowed.'
-      };
+      const match = existingDbRevs.find(
+        r => r.user_id === currentUser.id ||
+             (r.user_email && r.user_email.toLowerCase().trim() === currentUser.email.toLowerCase().trim())
+      );
+      if (match) {
+        return {
+          success: false,
+          error: 'You have already posted a review for this title. Only 1 review per title is allowed.'
+        };
+      }
     }
   } catch {
     /* fallback to local check */

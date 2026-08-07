@@ -479,7 +479,10 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                     Go to Account Settings to Verify Email
                   </button>
                 </div>
-              ) : reviews.some(r => r.userId === currentUser.id || r.userEmail.toLowerCase() === currentUser.email.toLowerCase()) ? (
+              ) : (currentUser && reviews.some(r =>
+                (r.userId && r.userId === currentUser.id) ||
+                (r.userEmail && currentUser.email && r.userEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim())
+              )) ? (
                 <div style={{ backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '18px', borderRadius: '8px', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.2rem', color: '#60a5fa', fontWeight: 800, marginBottom: '6px' }}>
                     ✓ You Have Already Reviewed This Title
