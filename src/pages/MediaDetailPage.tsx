@@ -479,6 +479,15 @@ export const MediaDetailPage: React.FC<MediaDetailPageProps> = ({
                     Go to Account Settings to Verify Email
                   </button>
                 </div>
+              ) : reviews.some(r => r.userId === currentUser.id || r.userEmail.toLowerCase() === currentUser.email.toLowerCase()) ? (
+                <div style={{ backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '18px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.2rem', color: '#60a5fa', fontWeight: 800, marginBottom: '6px' }}>
+                    ✓ You Have Already Reviewed This Title
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: '#aaa', margin: 0 }}>
+                    To maintain fair ratings, users can submit 1 review per movie/game. You can manage or delete your existing review from the list below.
+                  </p>
+                </div>
               ) : (
                 <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {reviewError && (

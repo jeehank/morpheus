@@ -456,6 +456,38 @@ export async function addReview(
     };
   }
 
+  // One review per user per title check
+  const localRevs = getStoredReviews();
+  const existingLocalReview = localRevs.find(
+    r => String(r.mediaId) === String(mediaId) &&
+         r.mediaType === mediaType &&
+         (r.userId === currentUser.id || r.userEmail.toLowerCase() === currentUser.email.toLowerCase())
+  );
+  if (existingLocalReview) {
+    return {
+      success: false,
+      error: 'You have already posted a review for this title. Only 1 review per title is allowed.'
+    };
+  }
+
+  try {
+    const { data: existingDbRevs } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('media_id', String(mediaId))
+      .eq('media_type', mediaType)
+      .eq('user_id', currentUser.id);
+
+    if (existingDbRevs && existingDbRevs.length > 0) {
+      return {
+        success: false,
+        error: 'You have already posted a review for this title. Only 1 review per title is allowed.'
+      };
+    }
+  } catch {
+    /* fallback to local check */
+  }
+
   // Profanity check
   if (containsProfanity(headline) || containsProfanity(content)) {
     return {
